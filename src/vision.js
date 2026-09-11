@@ -37,4 +37,37 @@ function loadImageFromBlob(blob) {
   });
 }
 
-window.Vision = { loadModel, embedImage, loadImageFromBlob };
+/**
+ * MobileNet is a general-purpose classifier — it captures overall shape/
+ * texture well, but is weak at fine details like "gold vs silver" or
+ * "pink stone vs white stone" on otherwise-identical products. A simple
+ * color histogram fills that gap cheaply, and gets combined with the
+ * MobileNet embedding in search.js.
+ *
+ * Returns a normalized 216-bin (6x6x6) RGB histogram as a plain Array<number>.
+ */
+function extractColorHistogram(imgElement, bins = 6) {
+  const size = 32;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(imgElement, 0, 0, size, size);
+
+  const { data } = ctx.getImageData(0, 0, size, size);
+  const hist = new Array(bins * bins * bins).fill(0);
+  const binSize = 256 / bins;
+  let count = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = Math.min(bins - 1, Math.floor(data[i] / binSize));
+    const g = Math.min(bins - 1, Math.floor(data[i + 1] / binSize));
+    const b = Math.min(bins - 1, Math.floor(data[i + 2] / binSize));
+    hist[r * bins * bins + g * bins + b]++;
+    count++;
+  }
+
+  return hist.map((v) => v / count);
+}
+
+window.Vision = { loadModel, embedImage, loadImageFromBlob, extractColorHistogram };
