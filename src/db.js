@@ -33,7 +33,7 @@ function uuid() {
  * Save a newly captured image + its embedding vector.
  * vector must be a plain Array of numbers (Float32Array gets converted).
  */
-async function addImageRecord({ itemNo, barcode, imageBlob, vector }) {
+async function addImageRecord({ itemNo, barcode, imageBlob, vector, colorHist }) {
   const db = await openDB();
   const record = {
     id: uuid(),
@@ -41,6 +41,7 @@ async function addImageRecord({ itemNo, barcode, imageBlob, vector }) {
     barcode,
     imageBlob,
     vector: Array.from(vector),
+    colorHist: colorHist ? Array.from(colorHist) : null,
     createdAt: Date.now(),
   };
 
