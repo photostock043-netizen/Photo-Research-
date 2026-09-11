@@ -1,5 +1,11 @@
 // search.js
-// Brute-force cosine similarity search over the user's stored vectors.
+// Brute-force similarity search over the user's stored vectors, combining:
+//   - MobileNet embedding similarity (overall shape/texture)
+//   - color histogram similarity (gold vs silver, stone color, etc.)
+// MobileNet alone is weak at fine color differences between otherwise
+// near-identical product variants, so blending in color similarity
+// noticeably improves matching within a product line.
+//
 // Fine performance-wise up to a few thousand stored images per device.
 
 function cosineSimilarity(a, b) {
@@ -15,20 +21,42 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+const COLOR_WEIGHT = 0.35; // how much color histogram influences the final score
+const VISUAL_WEIGHT = 1 - COLOR_WEIGHT;
+
 /**
- * queryVector: Array<number> from Vision.embedImage()
- * allRecords: Array of { id, itemNo, vector, imageBlob, ... } from ProductDB.getAllImageRecords()
+ * query: { vector, colorHist } — colorHist is optional.
+ * record: a stored record with .vector and optionally .colorHist.
+ * Falls back to pure visual similarity if either side lacks a colorHist
+ * (e.g. records added before this feature existed).
+ */
+function combinedSimilarity(query, record) {
+  const visualSim = cosineSimilarity(query.vector, record.vector);
+  if (query.colorHist && record.colorHist) {
+    const colorSim = cosineSimilarity(query.colorHist, record.colorHist);
+    return VISUAL_WEIGHT * visualSim + COLOR_WEIGHT * colorSim;
+  }
+  return visualSim;
+}
+
+/**
+ * query: { vector: Array<number>, colorHist?: Array<number> }
+ * allRecords: Array of { id, itemNo, vector, colorHist, imageBlob, ... }
+ *   from ProductDB.getAllImageRecords()
  * topK: how many distinct products to return
+ * excludeItemNo: optional itemNo to skip (used for "products similar to X",
+ *   where X itself shouldn't appear in its own recommendations)
  *
  * Returns: [{ itemNo, similarity, recordId }] sorted by similarity desc,
  * one entry per itemNo. recordId points at whichever stored photo matched
  * best, so the UI can display that exact photo as the result thumbnail.
  */
-function searchByVector(queryVector, allRecords, topK = 5) {
+function searchByVector(query, allRecords, topK = 5, excludeItemNo = null) {
   const bestPerItem = new Map(); // itemNo -> { similarity, recordId }
 
   for (const record of allRecords) {
-    const sim = cosineSimilarity(queryVector, record.vector);
+    if (excludeItemNo && record.itemNo === excludeItemNo) continue;
+    const sim = combinedSimilarity(query, record);
     const current = bestPerItem.get(record.itemNo);
     if (current === undefined || sim > current.similarity) {
       bestPerItem.set(record.itemNo, { similarity: sim, recordId: record.id });
@@ -41,4 +69,4 @@ function searchByVector(queryVector, allRecords, topK = 5) {
     .slice(0, topK);
 }
 
-window.Search = { cosineSimilarity, searchByVector };
+window.Search = { cosineSimilarity, combinedSimilarity, searchByVector };
