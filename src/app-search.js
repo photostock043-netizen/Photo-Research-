@@ -66,6 +66,7 @@ els.searchBtn.addEventListener("click", async () => {
 
   setStatus("กำลังประมวลผลรูปภาพ (AI Vision)...");
   const queryVector = await Vision.embedImage(currentImgEl);
+  const queryColorHist = Vision.extractColorHistogram(currentImgEl);
 
   const allRecords = await ProductDB.getAllImageRecords();
   if (allRecords.length === 0) {
@@ -74,7 +75,11 @@ els.searchBtn.addEventListener("click", async () => {
   }
 
   setStatus("กำลังค้นหาสินค้าที่คล้ายกัน...");
-  const matches = Search.searchByVector(queryVector, allRecords, 5);
+  const matches = Search.searchByVector(
+    { vector: queryVector, colorHist: queryColorHist },
+    allRecords,
+    5
+  );
   const recordsById = new Map(allRecords.map((r) => [r.id, r]));
 
   els.photoResults.innerHTML = "";
@@ -128,8 +133,14 @@ els.tagSearchBtn.addEventListener("click", async () => {
   els.tagStatus.textContent = "พบสินค้าตรงกัน กำลังค้นหาสินค้าใกล้เคียง...";
 
   const queryVector = itemImages[0].vector;
+  const queryColorHist = itemImages[0].colorHist;
   const allRecords = await ProductDB.getAllImageRecords();
-  const matches = Search.searchByVector(queryVector, allRecords, 5, product.itemNo);
+  const matches = Search.searchByVector(
+    { vector: queryVector, colorHist: queryColorHist },
+    allRecords,
+    5,
+    product.itemNo
+  );
   const recordsById = new Map(allRecords.map((r) => [r.id, r]));
 
   if (matches.length === 0) {
