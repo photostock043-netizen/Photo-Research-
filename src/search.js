@@ -17,25 +17,26 @@ function cosineSimilarity(a, b) {
 
 /**
  * queryVector: Array<number> from Vision.embedImage()
- * allRecords: Array of { itemNo, vector, ... } from ProductDB.getAllImageRecords()
+ * allRecords: Array of { id, itemNo, vector, imageBlob, ... } from ProductDB.getAllImageRecords()
  * topK: how many distinct products to return
  *
- * Returns: [{ itemNo, similarity }] sorted by similarity desc,
- * one entry per itemNo (using its best-matching stored photo).
+ * Returns: [{ itemNo, similarity, recordId }] sorted by similarity desc,
+ * one entry per itemNo. recordId points at whichever stored photo matched
+ * best, so the UI can display that exact photo as the result thumbnail.
  */
 function searchByVector(queryVector, allRecords, topK = 5) {
-  const bestPerItem = new Map(); // itemNo -> best similarity
+  const bestPerItem = new Map(); // itemNo -> { similarity, recordId }
 
   for (const record of allRecords) {
     const sim = cosineSimilarity(queryVector, record.vector);
     const current = bestPerItem.get(record.itemNo);
-    if (current === undefined || sim > current) {
-      bestPerItem.set(record.itemNo, sim);
+    if (current === undefined || sim > current.similarity) {
+      bestPerItem.set(record.itemNo, { similarity: sim, recordId: record.id });
     }
   }
 
   return Array.from(bestPerItem.entries())
-    .map(([itemNo, similarity]) => ({ itemNo, similarity }))
+    .map(([itemNo, v]) => ({ itemNo, similarity: v.similarity, recordId: v.recordId }))
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK);
 }
