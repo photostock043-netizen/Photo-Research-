@@ -60,12 +60,14 @@ els.addBtn.addEventListener("click", async () => {
 
   setStatus("กำลังประมวลผลรูปภาพ (AI Vision)...");
   const vector = await Vision.embedImage(currentImgEl);
+  const colorHist = Vision.extractColorHistogram(currentImgEl);
 
   await ProductDB.addImageRecord({
     itemNo: product.itemNo,
     barcode,
     imageBlob: currentBlob,
     vector,
+    colorHist,
   });
 
   setStatus(`เพิ่มรูปสำเร็จ: ${product.description} (${product.itemNo})`);
@@ -109,11 +111,13 @@ els.batchAddBtn.addEventListener("click", async () => {
     els.batchStatus.textContent = `กำลังเพิ่มรูปที่ ${done}/${batchFiles.length}...`;
     const imgEl = await Vision.loadImageFromBlob(file);
     const vector = await Vision.embedImage(imgEl);
+    const colorHist = Vision.extractColorHistogram(imgEl);
     await ProductDB.addImageRecord({
       itemNo: product.itemNo,
       barcode,
       imageBlob: file,
       vector,
+      colorHist,
     });
   }
 
