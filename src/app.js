@@ -10,7 +10,14 @@ const els = {
   status: document.getElementById("status"),
   results: document.getElementById("results"),
   photoCount: document.getElementById("photoCount"),
+  batchPhotoInput: document.getElementById("batchPhotoInput"),
+  batchThumbs: document.getElementById("batchThumbs"),
+  batchBarcodeInput: document.getElementById("batchBarcodeInput"),
+  batchAddBtn: document.getElementById("batchAddBtn"),
+  batchStatus: document.getElementById("batchStatus"),
 };
+
+let batchFiles = [];
 
 let currentBlob = null;
 let currentImgEl = null;
@@ -86,25 +93,86 @@ els.searchBtn.addEventListener("click", async () => {
 
   setStatus("กำลังค้นหาสินค้าที่คล้ายกัน...");
   const matches = Search.searchByVector(queryVector, allRecords, 5);
+  const recordsById = new Map(allRecords.map((r) => [r.id, r]));
 
   els.results.innerHTML = "";
   for (const match of matches) {
     const product = await MasterLoader.lookupByItemNo(match.itemNo);
     if (!product) continue;
 
+    const matchedRecord = recordsById.get(match.recordId);
+    const thumbUrl = matchedRecord
+      ? URL.createObjectURL(matchedRecord.imageBlob)
+      : "";
+
     const pct = (match.similarity * 100).toFixed(1);
     const card = document.createElement("div");
     card.className = "result-card";
     card.innerHTML = `
-      <div class="result-sim">${pct}% ตรงกัน</div>
-      <div class="result-desc">${product.description}</div>
-      <div class="result-meta">Item No: ${product.itemNo} · ราคา: ${product.price}</div>
-      <div class="result-meta">Barcode: ${product.barcode.join(", ")}</div>
+      ${thumbUrl ? `<img class="result-thumb" src="${thumbUrl}" alt="${product.description}" />` : ""}
+      <div>
+        <div class="result-sim">${pct}% ตรงกัน</div>
+        <div class="result-desc">${product.description}</div>
+        <div class="result-meta">Item No: ${product.itemNo} · ราคา: ${product.price}</div>
+        <div class="result-meta">Barcode: ${product.barcode.join(", ")}</div>
+      </div>
     `;
     els.results.appendChild(card);
   }
 
   setStatus(`พบ ${matches.length} รายการที่ใกล้เคียงที่สุด`);
+});
+
+els.batchPhotoInput.addEventListener("change", () => {
+  batchFiles = Array.from(els.batchPhotoInput.files);
+  els.batchThumbs.innerHTML = "";
+  for (const file of batchFiles) {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    els.batchThumbs.appendChild(img);
+  }
+  els.batchStatus.textContent = batchFiles.length
+    ? `เลือกไว้ ${batchFiles.length} รูป`
+    : "";
+});
+
+els.batchAddBtn.addEventListener("click", async () => {
+  if (batchFiles.length === 0) {
+    els.batchStatus.textContent = "กรุณาเลือกรูปอย่างน้อย 1 รูป";
+    return;
+  }
+  const barcode = els.batchBarcodeInput.value.trim();
+  if (!barcode) {
+    els.batchStatus.textContent = "กรุณากรอก Barcode ก่อนเพิ่มข้อมูล";
+    return;
+  }
+
+  els.batchStatus.textContent = "กำลังค้นหาข้อมูลสินค้าจาก Barcode...";
+  const product = await MasterLoader.lookupByBarcode(barcode);
+  if (!product) {
+    els.batchStatus.textContent = `ไม่พบสินค้าที่ Barcode: ${barcode}`;
+    return;
+  }
+
+  let done = 0;
+  for (const file of batchFiles) {
+    done++;
+    els.batchStatus.textContent = `กำลังเพิ่มรูปที่ ${done}/${batchFiles.length}...`;
+    const imgEl = await Vision.loadImageFromBlob(file);
+    const vector = await Vision.embedImage(imgEl);
+    await ProductDB.addImageRecord({
+      itemNo: product.itemNo,
+      barcode,
+      imageBlob: file,
+      vector,
+    });
+  }
+
+  els.batchStatus.textContent = `เพิ่มสำเร็จ ${batchFiles.length} รูป: ${product.description} (${product.itemNo})`;
+  batchFiles = [];
+  els.batchThumbs.innerHTML = "";
+  els.batchPhotoInput.value = "";
+  await refreshPhotoCount();
 });
 
 (async function init() {
