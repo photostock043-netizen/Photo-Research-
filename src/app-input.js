@@ -1,10 +1,11 @@
 import { loadMobileNet, extractFeatures } from './vision.js';
 import { saveProduct, getProductByBarcode } from './db.js';
 
-let selectedImages = []; // เก็บ Data URL ของรูปทั้งหมด
+let selectedImages = [];
+let barcodeIndexMap = {};
 
-const barcodeInput = document.getElementById('barcodeInput') || document.getElementById('barcode');
-const tagsInput = document.getElementById('tagsInput') || document.getElementById('tags');
+const barcodeInput = document.getElementById('barcode');
+const tagsInput = document.getElementById('tags');
 const lookupNameEl = document.getElementById('product-lookup-name');
 const cameraFile = document.getElementById('camera-file');
 const galleryFile = document.getElementById('gallery-file');
@@ -14,9 +15,7 @@ const statusCard = document.getElementById('status-card');
 const statusText = document.getElementById('status-text');
 const submitBtn = document.getElementById('submit-btn');
 
-let barcodeIndexMap = {};
-
-// โหลดฐานข้อมูลบาร์โค้ดที่มีอยู่แล้วในระบบเพื่อค้นหาชื่อสินค้าอัตโนมัติ
+// โหลดฐานข้อมูลบาร์โค้ดเดิมในระบบเพื่อดึงชื่ออัตโนมัติ
 async function initBarcodeDatabase() {
     try {
         const res = await fetch('barcodeIndex.json');
@@ -29,7 +28,7 @@ async function initBarcodeDatabase() {
 }
 initBarcodeDatabase();
 
-// ตรวจสอบชื่อสินค้าอัตโนมัติเมื่อพิมพ์บาร์โค้ด
+// ตรวจสอบชื่อสินค้าให้อัตโนมัติเมื่อพิมพ์ Barcode
 barcodeInput.addEventListener('input', async () => {
     const code = barcodeInput.value.trim();
     if (!code) {
@@ -37,21 +36,19 @@ barcodeInput.addEventListener('input', async () => {
         return;
     }
 
-    // 1. ตรวจสอบจาก IndexedDB
     const existing = await getProductByBarcode(code);
     if (existing && existing.name) {
         lookupNameEl.textContent = `✓ พบในฐานข้อมูล: ${existing.name}`;
         return;
     }
 
-    // 2. ตรวจสอบจาก barcodeIndex.json ของระบบ
     if (barcodeIndexMap[code]) {
         const p = barcodeIndexMap[code];
         lookupNameEl.textContent = `✓ พบในระบบ: ${p.name || p.title || p}`;
         return;
     }
 
-    lookupNameEl.textContent = `(ไม่พบชื่อสินค้าเดิมในฐานข้อมูล จะใช้รหัสบาร์โค้ดเป็นชื่อ)`;
+    lookupNameEl.textContent = `(ไม่พบชื่อสินค้าเดิม จะใช้รหัสเป็นชื่อสินค้า)`;
 });
 
 function appendImages(files) {
@@ -72,12 +69,11 @@ function renderPreviews() {
         const item = document.createElement('div');
         item.style.position = 'relative';
         item.style.display = 'inline-block';
-        item.style.margin = '4px';
 
         const img = document.createElement('img');
         img.src = src;
-        img.style.width = '80px';
-        img.style.height = '80px';
+        img.style.width = '70px';
+        img.style.height = '70px';
         img.style.objectFit = 'cover';
         img.style.borderRadius = 'var(--radius, 6px)';
         img.style.border = '1px solid #ddd';
@@ -92,9 +88,10 @@ function renderPreviews() {
         delBtn.style.color = '#fff';
         delBtn.style.border = 'none';
         delBtn.style.borderRadius = '50%';
-        delBtn.style.width = '20px';
-        delBtn.style.height = '20px';
+        delBtn.style.width = '18px';
+        delBtn.style.height = '18px';
         delBtn.style.cursor = 'pointer';
+        delBtn.style.fontSize = '12px';
         delBtn.onclick = () => {
             selectedImages.splice(idx, 1);
             renderPreviews();
@@ -106,13 +103,13 @@ function renderPreviews() {
     });
 }
 
-// 1. ถ่ายจากกล้อง (ถ่ายทีละรูปแล้วนำมาต่อท้ายสะสมเรื่อยๆ)
+// 1. ถ่ายจากกล้อง (ถ่ายเพิ่มทีละรูปได้เรื่อยๆ)
 cameraFile.addEventListener('change', (e) => {
     appendImages(e.target.files);
     e.target.value = '';
 });
 
-// 2. เลือกจากคลัง (เลือกทีละหลายๆ รูปพร้อมกัน)
+// 2. เลือกจากคลัง (เลือกทีละหลายๆ รูปพร้อมกันได้)
 galleryFile.addEventListener('change', (e) => {
     appendImages(e.target.files);
     e.target.value = '';
@@ -129,28 +126,32 @@ form.addEventListener('submit', async (e) => {
 
     const barcode = barcodeInput.value.trim();
     const rawTags = tagsInput.value.trim();
-
-    // ประมวลผล Tags (ไม่บังคับ)
     const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
-    // ดึงชื่อสินค้าจากระบบฐานข้อมูลเดิม
+    // ดึงชื่อและข้อมูลจากฐานข้อมูลเดิมอัตโนมัติ
     let name = barcode;
+    let itemNo = barcode;
+    let price = '-';
+
     const existing = await getProductByBarcode(barcode);
-    if (existing && existing.name) {
-        name = existing.name;
+    if (existing) {
+        name = existing.name || name;
+        itemNo = existing.itemNo || itemNo;
+        price = existing.price || price;
     } else if (barcodeIndexMap[barcode]) {
-        const p = barcodeIndexMap[barcode];
-        name = p.name || p.title || p;
+        const meta = barcodeIndexMap[barcode];
+        name = meta.name || meta.title || name;
+        itemNo = meta.itemNo || itemNo;
+        price = meta.price || price;
     }
 
     statusCard.style.display = 'flex';
     submitBtn.disabled = true;
-    statusText.textContent = 'กำลังโหลดโมเดล AI และวิเคราะห์คุณลักษณะรูปภาพ...';
+    statusText.textContent = 'กำลังโหลดโมเดล AI และวิเคราะห์รูปภาพ...';
 
     try {
         await loadMobileNet();
 
-        // สกัด Features Vector จากภาพแรกของสินค้า
         const tempImg = new Image();
         tempImg.src = selectedImages[0];
         await new Promise(r => tempImg.onload = r);
@@ -158,25 +159,26 @@ form.addEventListener('submit', async (e) => {
         statusText.textContent = 'กำลังแปลงภาพเป็น Vector...';
         const features = await extractFeatures(tempImg);
 
-        // รวมรูปภาพเดิมที่มีอยู่แล้ว (ถ้ามี) เข้ากับรูปใหม่
-        let allImages = [...selectedImages];
-        if (existing && existing.images && Array.isArray(existing.images)) {
-            allImages = [...existing.images, ...selectedImages];
+        let finalImages = [...selectedImages];
+        if (existing && Array.isArray(existing.images)) {
+            finalImages = [...existing.images, ...selectedImages];
         }
 
         const productData = {
             barcode,
             name,
-            image: allImages[0],      // รองรับโครงสร้างรูปหลักเดิม
-            images: allImages,        // รองรับหลายรูป
-            tags,                     // Tags ป้ายกำกับ
+            itemNo,
+            price,
+            image: finalImages[0], // โครงสร้างเดิมสำหรับรูปปก
+            images: finalImages,   // รูปภาพทั้งหมด
+            tags,                  // Tags
             features: Array.from(features)
         };
 
         statusText.textContent = 'กำลังบันทึกลงฐานข้อมูล...';
         await saveProduct(productData);
 
-        alert(`บันทึกสินค้า "${name}" สำเร็จ เรียบร้อยแล้ว`);
+        alert(`บันทึกสินค้า "${name}" สำเร็จเรียบร้อยแล้ว`);
         form.reset();
         lookupNameEl.textContent = '';
         selectedImages = [];
