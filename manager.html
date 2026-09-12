@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>จัดการข้อมูล</title>
+<link rel="stylesheet" href="css/style.css?v=3" />
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html">🏠 หน้าแรก</a>
+    <a href="input.html">➕ เพิ่ม</a>
+    <a href="search.html">🔍 ค้นหา</a>
+    <a href="manage.html" class="active">🗑️ จัดการ</a>
+  </div>
+
+  <h1>จัดการข้อมูล</h1>
+  <div class="subtitle">ดู ลบรูป หรือลบสินค้าที่เพิ่มไว้ — ใช้ช่วงทดสอบเพื่อเริ่มใหม่ได้สะดวก</div>
+
+  <div class="card">
+    <button type="button" id="clearAllBtn" class="btn-danger">🗑️ ลบข้อมูลทั้งหมด (ล้างฐานข้อมูล)</button>
+    <div id="manageStatus" class="status-text"></div>
+  </div>
+
+  <div id="productGroups"></div>
+
+  <script src="src/masterLoader.js?v=2"></script>
+  <script src="src/db.js?v=5"></script>
+  <script src="src/app-manage.js?v=1"></script>
+</body>
+</html>
