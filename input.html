@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>เพิ่มข้อมูลสินค้า</title>
+<link rel="stylesheet" href="css/style.css?v=1" />
+</head>
+<body>
+  <div class="nav">
+    <a href="index.html">🏠 หน้าแรก</a>
+    <a href="input.html" class="active">➕ เพิ่มข้อมูล</a>
+    <a href="search.html">🔍 ค้นหา</a>
+  </div>
+
+  <h1>เพิ่มข้อมูลสินค้า</h1>
+  <div class="subtitle">ถ่ายรูป + กรอก Barcode เพื่อเพิ่มเข้าฐานข้อมูล</div>
+
+  <div class="card">
+    <label>ถ่ายรูปสินค้า (รูปเดียว)</label><br/>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" />
+    <img id="preview" alt="preview" />
+
+    <label style="display:block; margin-top:12px;">Barcode</label>
+    <input type="text" id="barcodeInput" placeholder="กรอกหรือสแกน Barcode" inputmode="numeric" />
+
+    <div class="btn-row">
+      <button id="addBtn" class="btn-green">➕ เพิ่มเข้าฐานข้อมูล</button>
+    </div>
+    <div id="status" class="status-text">กำลังเตรียมระบบ...</div>
+    <div id="photoCount"></div>
+  </div>
+
+  <div class="card">
+    <label>เพิ่มรูปหลายรูปพร้อมกัน (Barcode เดียวกัน)</label><br/>
+    <input type="file" id="batchPhotoInput" accept="image/*" multiple />
+    <div id="batchThumbs" class="batch-thumbs"></div>
+
+    <label style="display:block; margin-top:12px;">Barcode สำหรับรูปชุดนี้</label>
+    <input type="text" id="batchBarcodeInput" placeholder="กรอกหรือสแกน Barcode" inputmode="numeric" />
+
+    <div class="btn-row">
+      <button id="batchAddBtn" class="btn-green">➕ เพิ่มรูปทั้งหมดเข้าฐานข้อมูล</button>
+    </div>
+    <div id="batchStatus" class="status-text"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+
+  <script src="src/masterLoader.js?v=2"></script>
+  <script src="src/db.js?v=2"></script>
+  <script src="src/vision.js?v=2"></script>
+  <script src="src/app-input.js?v=1"></script>
+</body>
+</html>
