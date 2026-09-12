@@ -1,197 +1,147 @@
-// app-search.js
-// Wires the "Search" page: search by photo (top 5 similar), and search by
-// Barcode/Tag (exact product + 3-5 visually similar products).
+import { extractFeatures, extractBarcode } from './vision.js';
+import { searchByFeatures, searchByBarcode, getAllProducts } from './search.js';
 
-const els = {
-  photoInput: document.getElementById("photoInput"),
-  photoThumbs: document.getElementById("photoThumbs"),
-  searchBtn: document.getElementById("searchBtn"),
-  status: document.getElementById("status"),
-  photoResults: document.getElementById("photoResults"),
+const cameraSearchInput = document.getElementById('cameraSearchInput');
+const gallerySearchInput = document.getElementById('gallerySearchInput');
+const searchPreview = document.getElementById('searchPreview');
+const queryImage = document.getElementById('queryImage');
+const loadingStatus = document.getElementById('loadingStatus');
+const resultsSection = document.getElementById('resultsSection');
 
-  tagInput: document.getElementById("tagInput"),
-  tagSearchBtn: document.getElementById("tagSearchBtn"),
-  tagStatus: document.getElementById("tagStatus"),
-  tagExactResult: document.getElementById("tagExactResult"),
-  similarWrap: document.getElementById("similarWrap"),
-  similarResults: document.getElementById("similarResults"),
+// Modal Elements
+const galleryModal = document.getElementById('galleryModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const modalProductName = document.getElementById('modalProductName');
+const modalTags = document.getElementById('modalTags');
+const modalImagesContainer = document.getElementById('modalImagesContainer');
+
+let loadedProductsCache = [];
+
+async function handleSearch(file) {
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    queryImage.src = e.target.result;
+    searchPreview.style.display = 'block';
+    loadingStatus.style.display = 'block';
+    resultsSection.innerHTML = '';
+
+    await new Promise(r => queryImage.onload = r);
+
+    try {
+      // 1. ตรวจสอบบาร์โค้ด
+      let barcode = null;
+      try {
+        barcode = await extractBarcode(queryImage);
+      } catch (err) {
+        console.log('No barcode found');
+      }
+
+      let results = [];
+      if (barcode) {
+        results = await searchByBarcode(barcode);
+      }
+
+      // 2. ถ้าไม่เจอบาร์โค้ด ให้ค้นหาด้วย Visual Features
+      if (!results || results.length === 0) {
+        const queryVector = await extractFeatures(queryImage);
+        results = await searchByFeatures(queryVector);
+      }
+
+      loadedProductsCache = results;
+      renderResults(results);
+    } catch (err) {
+      console.error(err);
+      resultsSection.innerHTML = `<p class="status-msg error">เกิดข้อผิดพลาดในการค้นหา: ${err.message}</p>`;
+    } finally {
+      loadingStatus.style.display = 'none';
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// 1. ค้นหาผ่านกล้อง
+cameraSearchInput.addEventListener('change', (e) => {
+  handleSearch(e.target.files[0]);
+  e.target.value = '';
+});
+
+// 2. ค้นหาผ่านคลังรูป
+gallerySearchInput.addEventListener('change', (e) => {
+  handleSearch(e.target.files[0]);
+  e.target.value = '';
+});
+
+function renderResults(products) {
+  resultsSection.innerHTML = '';
+
+  if (!products || products.length === 0) {
+    resultsSection.innerHTML = '<p class="status-msg">ไม่พบสินค้าที่ตรงกัน</p>';
+    return;
+  }
+
+  products.forEach((prod, index) => {
+    const card = document.createElement('div');
+    card.className = 'result-card card';
+
+    // รองรับทั้ง schema เก่า (image) และ schema ใหม่ (images[])
+    const imagesList = prod.images || (prod.image ? [prod.image] : []);
+    const coverImage = imagesList[0] || 'placeholder.png';
+    const tagList = prod.tags || [];
+
+    card.innerHTML = `
+      <img src="${coverImage}" alt="${prod.name}" class="result-thumb">
+      <div class="result-info">
+        <h3>${prod.name}</h3>
+        <p><strong>บาร์โค้ด:</strong> ${prod.barcode || '-'}</p>
+        ${prod.similarity !== undefined ? `<p><strong>ความคล้ายคลึง:</strong> ${(prod.similarity * 100).toFixed(1)}%</p>` : ''}
+        ${tagList.length > 0 ? `<div class="tag-chips">${tagList.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : ''}
+        <button type="button" class="btn btn-secondary view-more-btn" data-index="${index}">
+          🖼️ ดูรูปภาพทั้งหมด (${imagesList.length})
+        </button>
+      </div>
+    `;
+
+    card.querySelector('.view-more-btn').onclick = () => openModal(prod);
+    resultsSection.appendChild(card);
+  });
+}
+
+// ฟังก์ชันเปิด Modal ดูรูปทั้งหมด
+function openModal(prod) {
+  const imagesList = prod.images || (prod.image ? [prod.image] : []);
+  modalProductName.textContent = prod.name || 'รูปภาพสินค้า';
+  
+  // Render Tags ใน Modal
+  modalTags.innerHTML = '';
+  if (prod.tags && prod.tags.length > 0) {
+    prod.tags.forEach(tag => {
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = tag;
+      modalTags.appendChild(chip);
+    });
+  }
+
+  // Render รูปภาพทั้งหมด
+  modalImagesContainer.innerHTML = '';
+  imagesList.forEach((src) => {
+    const img = document.createElement('img');
+    img.src = src;
+    img.className = 'modal-img-item';
+    modalImagesContainer.appendChild(img);
+  });
+
+  galleryModal.style.display = 'flex';
+}
+
+closeModalBtn.onclick = () => {
+  galleryModal.style.display = 'none';
 };
 
-let searchFiles = [];
-
-function setStatus(msg) {
-  els.status.textContent = msg;
-}
-
-/**
- * Renders one result card. `badge` is the small colored label
- * (e.g. "94.2% ตรงกัน" or "ตรงกับ Barcode/Tag").
- */
-function renderResultCard(container, product, badgeText, badgeClass, thumbUrl) {
-  const card = document.createElement("div");
-  card.className = "result-card";
-  card.innerHTML = `
-    ${thumbUrl ? `<img class="result-thumb" src="${thumbUrl}" alt="${product.description}" />` : ""}
-    <div>
-      <div class="${badgeClass}">${badgeText}</div>
-      <div class="result-desc">${product.description}</div>
-      <div class="result-meta">Item No: ${product.itemNo} · ราคา: ${product.price}</div>
-      <div class="result-meta">Barcode: ${product.barcode.join(", ")}</div>
-    </div>
-  `;
-  container.appendChild(card);
-}
-
-// ---------- Search by photo ----------
-
-els.photoInput.addEventListener("change", () => {
-  searchFiles = Array.from(els.photoInput.files);
-  els.photoThumbs.innerHTML = "";
-  for (const file of searchFiles) {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    els.photoThumbs.appendChild(img);
+window.onclick = (e) => {
+  if (e.target === galleryModal) {
+    galleryModal.style.display = 'none';
   }
-  els.photoResults.innerHTML = "";
-  setStatus(
-    searchFiles.length
-      ? `เลือกไว้ ${searchFiles.length} รูป พร้อมค้นหา`
-      : "กรุณาเลือกรูปอย่างน้อย 1 รูป"
-  );
-});
-
-els.searchBtn.addEventListener("click", async () => {
-  if (searchFiles.length === 0) {
-    setStatus("กรุณาเลือกรูปอย่างน้อย 1 รูป");
-    return;
-  }
-
-  try {
-    const vectors = [];
-    const colorHists = [];
-    for (let i = 0; i < searchFiles.length; i++) {
-      setStatus(`กำลังประมวลผลรูปที่ ${i + 1}/${searchFiles.length} (AI Vision)...`);
-      const imgEl = await Vision.loadImageFromBlob(searchFiles[i]);
-      vectors.push(await Vision.embedImage(imgEl));
-      colorHists.push(Vision.extractColorHistogram(imgEl));
-    }
-
-    // Combine multiple photos into one query using vector math:
-    // normalize + average, so several angles/lighting of the same item
-    // give a more robust query than any single photo alone.
-    const queryVector = Search.averageVectors(vectors);
-    const queryColorHist = Search.averageVectors(colorHists);
-
-    const allRecords = await ProductDB.getAllImageRecords();
-    if (allRecords.length === 0) {
-      setStatus("ยังไม่มีรูปสินค้าในฐานข้อมูล กรุณาเพิ่มรูป + Barcode ก่อน (หน้าเพิ่มข้อมูล)");
-      return;
-    }
-
-    setStatus(`กำลังค้นหาสินค้าที่คล้ายกัน... (เทียบกับ ${allRecords.length} รูปในเครื่อง)`);
-    const matches = Search.searchByVector(
-      { vector: queryVector, colorHist: queryColorHist },
-      allRecords,
-      5
-    );
-    const recordsById = new Map(allRecords.map((r) => [r.id, r]));
-
-    els.photoResults.innerHTML = "";
-    for (const match of matches) {
-      const product = await MasterLoader.lookupByItemNo(match.itemNo);
-      if (!product) continue;
-      const matchedRecord = recordsById.get(match.recordId);
-      const thumbUrl = matchedRecord ? URL.createObjectURL(matchedRecord.imageBlob) : "";
-      const pct = (match.similarity * 100).toFixed(1);
-      renderResultCard(els.photoResults, product, `${pct}% ตรงกัน`, "result-sim", thumbUrl);
-    }
-
-    setStatus(`พบ ${matches.length} รายการที่ใกล้เคียงที่สุด (จากรูป ${searchFiles.length} รูปที่เลือก)`);
-  } catch (err) {
-    console.error(err);
-    setStatus("เกิดข้อผิดพลาดระหว่างค้นหา: " + err.message);
-  }
-});
-
-// ---------- Search by Barcode / Tag ----------
-
-els.tagSearchBtn.addEventListener("click", async () => {
-  const raw = els.tagInput.value.trim();
-  els.tagExactResult.innerHTML = "";
-  els.similarResults.innerHTML = "";
-  els.similarWrap.style.display = "none";
-
-  if (!raw) {
-    els.tagStatus.textContent = "กรุณากรอก Barcode หรือ Item No / Tag";
-    return;
-  }
-
-  try {
-    els.tagStatus.textContent = "กำลังค้นหา...";
-
-    // Try as a barcode first, then fall back to treating it as an itemNo/tag.
-    let product = await MasterLoader.lookupByBarcode(raw);
-    if (!product) {
-      product = await MasterLoader.lookupByItemNo(raw);
-    }
-
-    if (!product) {
-      els.tagStatus.textContent = `ไม่พบสินค้า: ${raw}`;
-      return;
-    }
-
-    const itemImages = await ProductDB.getImagesByItemNo(product.itemNo);
-    const exactThumb = itemImages.length ? URL.createObjectURL(itemImages[0].imageBlob) : "";
-    renderResultCard(els.tagExactResult, product, "ตรงกับ Barcode/Tag", "result-exact", exactThumb);
-
-    if (itemImages.length === 0) {
-      els.tagStatus.textContent = "พบสินค้าตรงกัน (ยังไม่มีรูปของสินค้านี้ในฐานข้อมูล จึงยังแนะนำสินค้าใกล้เคียงไม่ได้)";
-      return;
-    }
-
-    els.tagStatus.textContent = "พบสินค้าตรงกัน กำลังค้นหาสินค้าใกล้เคียง...";
-
-    const queryVector = itemImages[0].vector;
-    const queryColorHist = itemImages[0].colorHist;
-    const allRecords = await ProductDB.getAllImageRecords();
-    const matches = Search.searchByVector(
-      { vector: queryVector, colorHist: queryColorHist },
-      allRecords,
-      5,
-      product.itemNo
-    );
-    const recordsById = new Map(allRecords.map((r) => [r.id, r]));
-
-    if (matches.length === 0) {
-      els.tagStatus.textContent = "พบสินค้าตรงกัน (ยังไม่มีสินค้าอื่นในฐานข้อมูลให้เปรียบเทียบ)";
-      return;
-    }
-
-    els.similarWrap.style.display = "block";
-    for (const match of matches) {
-      const simProduct = await MasterLoader.lookupByItemNo(match.itemNo);
-      if (!simProduct) continue;
-      const matchedRecord = recordsById.get(match.recordId);
-      const thumbUrl = matchedRecord ? URL.createObjectURL(matchedRecord.imageBlob) : "";
-      const pct = (match.similarity * 100).toFixed(1);
-      renderResultCard(els.similarResults, simProduct, `${pct}% ใกล้เคียง`, "result-sim", thumbUrl);
-    }
-
-    els.tagStatus.textContent = `พบสินค้าตรงกัน และสินค้าใกล้เคียง ${matches.length} รายการ`;
-  } catch (err) {
-    console.error(err);
-    els.tagStatus.textContent = "เกิดข้อผิดพลาดระหว่างค้นหา: " + err.message;
-  }
-});
-
-(async function init() {
-  try {
-    setStatus("กำลังโหลดข้อมูลสินค้า...");
-    await MasterLoader.loadMasterData();
-    await Vision.loadModel();
-    setStatus("พร้อมใช้งาน — ถ่ายรูปสินค้า หรือค้นหาด้วย Barcode/Tag");
-  } catch (err) {
-    console.error(err);
-    setStatus("โหลดระบบไม่สำเร็จ: " + err.message + " (ลองรีเฟรชหน้าใหม่)");
-  }
-})();
+};
