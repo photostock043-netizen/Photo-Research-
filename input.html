@@ -1,63 +1,71 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>เพิ่มสินค้า - Photo Research</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo-Research - เพิ่มข้อมูลสินค้า</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- TensorFlow.js and MobileNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+    <!-- ZXing for Barcode -->
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>เพิ่มข้อมูลสินค้า</h1>
-      <nav>
-        <a href="index.html">หน้าแรก</a>
-        <a href="search.html">ค้นหา</a>
-      </nav>
-    </header>
+    <div class="container">
+        <header>
+            <h1>เพิ่มข้อมูลสินค้าลงฐานข้อมูล</h1>
+            <nav>
+                <a href="index.html" class="btn btn-secondary">กลับหน้าหลัก</a>
+                <a href="search.html" class="btn btn-primary">ไปหน้าค้นหา</a>
+            </nav>
+        </header>
 
-    <main>
-      <form id="productForm">
-        <div class="form-group">
-          <label for="barcodeInput">บาร์โค้ด:</label>
-          <input type="text" id="barcodeInput" required placeholder="กรอกบาร์โค้ดสินค้า">
-        </div>
+        <main>
+            <div class="card">
+                <form id="add-product-form">
+                    <!-- 1. กรอกบาร์โค้ด (ระบบจะดึงชื่อสินค้าจากฐานข้อมูลอัตโนมัติ) -->
+                    <div class="form-group">
+                        <label for="barcode">รหัสบาร์โค้ด (Barcode):</label>
+                        <input type="text" id="barcode" name="barcode" required placeholder="กรอกรหัสบาร์โค้ด 13 หลัก">
+                        <small id="product-lookup-name" style="display: block; margin-top: 5px; color: var(--primary-color, #2563eb); font-weight: 500;"></small>
+                    </div>
 
-        <div class="form-group">
-          <label for="nameInput">ชื่อสินค้า:</label>
-          <input type="text" id="nameInput" required placeholder="กรอกชื่อสินค้า">
-        </div>
+                    <!-- 2. ระบบคีย์ Tags (ไม่บังคับ) -->
+                    <div class="form-group">
+                        <label for="tags">Tags / ป้ายกำกับ (ไม่บังคับ - คั่นด้วยจุลภาค เช่น ร้อน, โปรโมชั่น, สีแดง):</label>
+                        <input type="text" id="tags" name="tags" placeholder="tag1, tag2, tag3">
+                    </div>
 
-        <!-- ระบบคีย์ Tags (ไม่บังคับ) -->
-        <div class="form-group">
-          <label for="tagsInput">Tags (ไม่บังคับ คั่นด้วยจุลภาค เช่น สีแดง, พลาสติก):</label>
-          <input type="text" id="tagsInput" placeholder="tag1, tag2, tag3">
-        </div>
+                    <!-- 3. ระบบเพิ่มรูปภาพ: ถ่ายจากกล้องได้หลายๆ รูป / เลือกจากคลังได้หลายๆ รูป -->
+                    <div class="form-group">
+                        <label>รูปภาพสินค้า (ถ่ายหรือเลือกได้หลายรูป):</label>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
+                                📷 ถ่ายจากกล้อง
+                                <input type="file" id="camera-file" accept="image/*" capture="environment" style="display: none;">
+                            </label>
+                            <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
+                                🖼️ เลือกจากคลัง (หลายรูป)
+                                <input type="file" id="gallery-file" accept="image/*" multiple style="display: none;">
+                            </label>
+                        </div>
 
-        <!-- ระบบเพิ่มรูปภาพ: ถ่ายจากกล้องได้เรื่อยๆ / เลือกจากคลังหลายรูป -->
-        <div class="form-group">
-          <label>รูปภาพสินค้า (เลือกหรือถ่ายได้หลายรูป):</label>
-          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-            <label style="padding: 8px 12px; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">
-              📷 ถ่ายจากกล้อง
-              <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
-            </label>
-            <label style="padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
-              🖼️ เลือกจากคลัง (หลายรูป)
-              <input type="file" id="galleryInput" accept="image/*" multiple style="display: none;">
-            </label>
-          </div>
-          <div id="imagePreviewContainer" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
-        </div>
+                        <!-- พรีวิวรูปภาพทั้งหมดที่เลือกไว้ -->
+                        <div id="image-preview-list" class="gallery" style="margin-top: 10px;"></div>
+                    </div>
 
-        <button type="submit" id="submitBtn" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">บันทึกสินค้า</button>
-      </form>
-    </main>
-  </div>
+                    <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;">บันทึกข้อมูลสินค้า</button>
+                </form>
+            </div>
 
-  <script type="module" src="src/app-input.js"></script>
+            <div id="status-card" class="card status-card" style="display: none;">
+                <div class="spinner"></div>
+                <p id="status-text">กำลังประมวลผล...</p>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="src/app-input.js"></script>
 </body>
 </html>
