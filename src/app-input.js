@@ -1,39 +1,54 @@
 // app-input.js
-// Wires the "Add data" page: camera/gallery capture -> accumulate photos ->
-// embedding -> save to IndexedDB, all under one Barcode + optional Tags.
+// Wires the "Add data" page: camera capture and/or gallery selection both
+// feed one accumulating list of pending photos. A mandatory jewelry
+// category (type / style / color) plus optional free-text tags get saved
+// with every photo in that batch.
 
-const els = {};
-try {
-  Object.assign(els, {
-    cameraBtn: document.getElementById("cameraBtn"),
-    galleryBtn: document.getElementById("galleryBtn"),
-    cameraInput: document.getElementById("cameraInput"),
-    galleryInput: document.getElementById("galleryInput"),
-    photoThumbs: document.getElementById("photoThumbs"),
-    photoThumbCount: document.getElementById("photoThumbCount"),
-    barcodeInput: document.getElementById("barcodeInput"),
-    tagsInput: document.getElementById("tagsInput"),
-    addBtn: document.getElementById("addBtn"),
-    status: document.getElementById("status"),
-    photoCount: document.getElementById("photoCount"),
-  });
+const { CATEGORY_TREE } = window.CategoryTree;
 
-  for (const [key, el] of Object.entries(els)) {
-    if (!el) throw new Error(`ไม่พบ element id="${key}" ใน input.html — ไฟล์ HTML กับ JS อาจไม่ตรงเวอร์ชันกัน`);
-  }
-} catch (err) {
-  console.error(err);
-  const statusEl = document.getElementById("status");
-  if (statusEl) statusEl.textContent = "โหลดหน้าไม่สำเร็จ: " + err.message;
-  throw err;
-}
+const els = {
+  pickCameraBtn: document.getElementById("pickCameraBtn"),
+  pickGalleryBtn: document.getElementById("pickGalleryBtn"),
+  cameraInput: document.getElementById("cameraInput"),
+  galleryInput: document.getElementById("galleryInput"),
+  pendingThumbs: document.getElementById("pendingThumbs"),
+  pendingCount: document.getElementById("pendingCount"),
+  barcodeInput: document.getElementById("barcodeInput"),
+  mainCategorySelect: document.getElementById("mainCategorySelect"),
+  typeSelect: document.getElementById("typeSelect"),
+  styleFieldWrap: document.getElementById("styleFieldWrap"),
+  styleSelect: document.getElementById("styleSelect"),
+  colorSelect: document.getElementById("colorSelect"),
+  tagsInput: document.getElementById("tagsInput"),
+  addBtn: document.getElementById("addBtn"),
+  clearPendingBtn: document.getElementById("clearPendingBtn"),
+  status: document.getElementById("status"),
+  photoCount: document.getElementById("photoCount"),
+};
 
-// Accumulated photos, from either the camera or the gallery picker.
-// Each entry: { file, objectUrl }
-let photos = [];
+let pendingFiles = [];
 
 function setStatus(msg) {
   els.status.textContent = msg;
+}
+
+function renderPendingThumbs() {
+  els.pendingThumbs.innerHTML = "";
+  for (const file of pendingFiles) {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    els.pendingThumbs.appendChild(img);
+  }
+  els.pendingCount.textContent = pendingFiles.length
+    ? `เลือกไว้ ${pendingFiles.length} รูป`
+    : "";
+}
+
+function parseFreeTags(raw) {
+  return raw
+    .split(/[,\s]+/)
+    .map((t) => t.trim())
+    .filter(Boolean);
 }
 
 async function refreshPhotoCount() {
@@ -41,65 +56,48 @@ async function refreshPhotoCount() {
   els.photoCount.textContent = `รูปในเครื่องทั้งหมด: ${n}`;
 }
 
-function renderThumbs() {
-  els.photoThumbs.innerHTML = "";
-  photos.forEach((p, idx) => {
-    const item = document.createElement("div");
-    item.className = "thumb-item";
+// ---------- Category cascading select ----------
 
-    const img = document.createElement("img");
-    img.src = p.objectUrl;
-    item.appendChild(img);
-
-    const removeBtn = document.createElement("button");
-    removeBtn.type = "button";
-    removeBtn.className = "thumb-remove";
-    removeBtn.textContent = "✕";
-    removeBtn.addEventListener("click", () => {
-      URL.revokeObjectURL(p.objectUrl);
-      photos.splice(idx, 1);
-      renderThumbs();
-    });
-    item.appendChild(removeBtn);
-
-    els.photoThumbs.appendChild(item);
-  });
-
-  els.photoThumbCount.textContent = photos.length
-    ? `เลือกไว้ ${photos.length} รูป`
-    : "";
-}
-
-function addFiles(fileList) {
-  for (const file of Array.from(fileList)) {
-    photos.push({ file, objectUrl: URL.createObjectURL(file) });
+els.typeSelect.addEventListener("change", () => {
+  const cfg = CATEGORY_TREE[els.typeSelect.value];
+  if (cfg && cfg.hasStyle) {
+    els.styleFieldWrap.style.display = "block";
+    els.styleSelect.innerHTML =
+      '<option value="">-- เลือกรูปแบบ --</option>' +
+      cfg.styles.map((s) => `<option value="${s}">${s}</option>`).join("");
+  } else {
+    els.styleFieldWrap.style.display = "none";
+    els.styleSelect.innerHTML = "";
   }
-  renderThumbs();
-}
-
-// "ถ่ายจากกล้อง" — opens the camera; can be pressed repeatedly to add more
-// photos one at a time. Resetting the input's value lets the same camera
-// input fire `change` again for a retake.
-els.cameraBtn.addEventListener("click", () => {
-  els.cameraInput.click();
 });
+
+// ---------- Camera / gallery pickers ----------
+
+els.pickCameraBtn.addEventListener("click", () => els.cameraInput.click());
+els.pickGalleryBtn.addEventListener("click", () => els.galleryInput.click());
+
 els.cameraInput.addEventListener("change", () => {
-  if (els.cameraInput.files.length) addFiles(els.cameraInput.files);
-  els.cameraInput.value = "";
+  pendingFiles = pendingFiles.concat(Array.from(els.cameraInput.files));
+  renderPendingThumbs();
+  els.cameraInput.value = ""; // allow capturing another shot immediately
 });
 
-// "เลือกจากคลัง" — can select several photos at once; accumulates into
-// the same list as the camera photos.
-els.galleryBtn.addEventListener("click", () => {
-  els.galleryInput.click();
-});
 els.galleryInput.addEventListener("change", () => {
-  if (els.galleryInput.files.length) addFiles(els.galleryInput.files);
+  pendingFiles = pendingFiles.concat(Array.from(els.galleryInput.files));
+  renderPendingThumbs();
   els.galleryInput.value = "";
 });
 
+els.clearPendingBtn.addEventListener("click", () => {
+  pendingFiles = [];
+  renderPendingThumbs();
+  setStatus("ล้างรายการรูปที่เลือกแล้ว");
+});
+
+// ---------- Add to database ----------
+
 els.addBtn.addEventListener("click", async () => {
-  if (photos.length === 0) {
+  if (pendingFiles.length === 0) {
     setStatus("กรุณาถ่ายรูปหรือเลือกรูปอย่างน้อย 1 รูป");
     return;
   }
@@ -108,39 +106,65 @@ els.addBtn.addEventListener("click", async () => {
     setStatus("กรุณากรอก Barcode ก่อนเพิ่มข้อมูล");
     return;
   }
-  const tags = els.tagsInput.value.trim();
 
-  setStatus("กำลังค้นหาข้อมูลสินค้าจาก Barcode...");
-  const product = await MasterLoader.lookupByBarcode(barcode);
-  if (!product) {
-    setStatus(`ไม่พบสินค้าที่ Barcode: ${barcode}`);
+  const mainCategory = els.mainCategorySelect.value;
+  const type = els.typeSelect.value;
+  if (!type) {
+    setStatus("กรุณาเลือกประเภทสินค้า");
+    return;
+  }
+  const cfg = CATEGORY_TREE[type];
+  let style = "";
+  if (cfg && cfg.hasStyle) {
+    style = els.styleSelect.value;
+    if (!style) {
+      setStatus("กรุณาเลือกรูปแบบของสินค้า");
+      return;
+    }
+  }
+  const color = els.colorSelect.value;
+  if (!color) {
+    setStatus("กรุณาเลือกสีของสินค้า");
     return;
   }
 
-  let done = 0;
-  for (const p of photos) {
-    done++;
-    setStatus(`กำลังประมวลผลรูปที่ ${done}/${photos.length} (AI Vision)...`);
-    const imgEl = await Vision.loadImageFromBlob(p.file);
-    const vector = await Vision.embedImage(imgEl);
-    const colorHist = Vision.extractColorHistogram(imgEl);
-    await ProductDB.addImageRecord({
-      itemNo: product.itemNo,
-      barcode,
-      imageBlob: p.file,
-      vector,
-      colorHist,
-      tags,
-    });
+  const categoryTags = [mainCategory, type, style, color].filter(Boolean);
+  const freeTags = parseFreeTags(els.tagsInput.value);
+  const tags = Array.from(new Set([...categoryTags, ...freeTags]));
+
+  try {
+    setStatus("กำลังค้นหาข้อมูลสินค้าจาก Barcode...");
+    const product = await MasterLoader.lookupByBarcode(barcode);
+    if (!product) {
+      setStatus(`ไม่พบสินค้าที่ Barcode: ${barcode}`);
+      return;
+    }
+
+    let done = 0;
+    for (const file of pendingFiles) {
+      done++;
+      setStatus(`กำลังเพิ่มรูปที่ ${done}/${pendingFiles.length}...`);
+      const imgEl = await Vision.loadImageFromBlob(file);
+      const vector = await Vision.embedImage(imgEl);
+      const colorHist = Vision.extractColorHistogram(imgEl);
+      await ProductDB.addImageRecord({
+        itemNo: product.itemNo,
+        barcode,
+        imageBlob: file,
+        vector,
+        colorHist,
+        tags,
+      });
+    }
+
+    setStatus(`เพิ่มสำเร็จ ${pendingFiles.length} รูป: ${product.description} (${product.itemNo})`);
+    pendingFiles = [];
+    renderPendingThumbs();
+    await refreshPhotoCount();
+  } catch (err) {
+    console.error(err);
+    setStatus("เกิดข้อผิดพลาด: " + err.message);
   }
-
-  setStatus(`เพิ่มสำเร็จ ${photos.length} รูป: ${product.description} (${product.itemNo})`);
-
-  photos.forEach((p) => URL.revokeObjectURL(p.objectUrl));
-  photos = [];
-  renderThumbs();
-  els.tagsInput.value = "";
-  await refreshPhotoCount();
 });
 
 (async function init() {
@@ -149,7 +173,7 @@ els.addBtn.addEventListener("click", async () => {
     await MasterLoader.loadMasterData();
     await Vision.loadModel();
     await refreshPhotoCount();
-    setStatus("พร้อมใช้งาน — ถ่ายรูปสินค้าเพื่อเริ่มต้น");
+    setStatus("พร้อมใช้งาน — ถ่ายรูปหรือเลือกจากคลังเพื่อเริ่มต้น");
   } catch (err) {
     console.error(err);
     setStatus("โหลดระบบไม่สำเร็จ: " + err.message + " (ลองรีเฟรชหน้าใหม่)");
