@@ -4,39 +4,70 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>เพิ่มข้อมูลสินค้า</title>
-<link rel="stylesheet" href="css/style.css?v=1" />
+<link rel="stylesheet" href="css/style.css?v=3" />
 </head>
 <body>
   <div class="nav">
     <a href="index.html">🏠 หน้าแรก</a>
-    <a href="input.html" class="active">➕ เพิ่มข้อมูล</a>
+    <a href="input.html" class="active">➕ เพิ่ม</a>
     <a href="search.html">🔍 ค้นหา</a>
+    <a href="manage.html">🗑️ จัดการ</a>
   </div>
 
   <h1>เพิ่มข้อมูลสินค้า</h1>
-  <div class="subtitle">ถ่ายรูป + กรอก Barcode เพื่อเพิ่มเข้าฐานข้อมูล</div>
+  <div class="subtitle">ถ่ายจากกล้อง หรือเลือกจากคลัง ได้หลายรูปพร้อมกัน</div>
 
   <div class="card">
-    <label>รูปสินค้า (ถ่ายซ้ำได้หลายครั้ง หรือเลือกจากคลังหลายรูป)</label>
-
-    <div class="capture-row">
-      <button type="button" id="cameraBtn" class="capture-btn btn-camera">📷 ถ่ายจากกล้อง</button>
-      <button type="button" id="galleryBtn" class="capture-btn btn-gallery">🖼️ เลือกจากคลัง</button>
+    <div class="section-title">เลือกรูปสินค้า</div>
+    <div class="btn-row">
+      <button type="button" id="pickCameraBtn" class="btn-blue">📷 ถ่ายจากกล้อง</button>
+      <button type="button" id="pickGalleryBtn" class="btn-purple">🖼️ เลือกจากคลัง</button>
     </div>
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" />
-    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none;" />
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" />
+    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" />
 
-    <div id="photoThumbs" class="thumb-list"></div>
-    <div id="photoThumbCount" class="thumb-count"></div>
+    <div id="pendingThumbs" class="batch-thumbs"></div>
+    <div id="pendingCount" class="status-text"></div>
 
     <label style="display:block; margin-top:12px;">Barcode</label>
     <input type="text" id="barcodeInput" placeholder="กรอกหรือสแกน Barcode" inputmode="numeric" />
 
-    <label style="display:block; margin-top:12px;">Tags (ไม่บังคับ)</label>
-    <input type="text" id="tagsInput" placeholder="เช่น ทอง, สร้อยคอ, งานแต่ง (คั่นด้วยจุลภาค)" />
+    <div class="section-title" style="margin-top:16px;">หมวดหมู่สินค้า (บังคับเลือก)</div>
+
+    <label>ประเภทหลัก</label>
+    <select id="mainCategorySelect">
+      <option value="จิวเวลรี่">จิวเวลรี่</option>
+    </select>
+
+    <label style="display:block; margin-top:8px;">ประเภทสินค้า</label>
+    <select id="typeSelect">
+      <option value="">-- เลือกประเภท --</option>
+      <option value="สร้อย">สร้อย</option>
+      <option value="ต่างหู">ต่างหู</option>
+      <option value="กำไลข้อมือ">กำไลข้อมือ</option>
+      <option value="แหวน">แหวน</option>
+    </select>
+
+    <div id="styleFieldWrap" style="display:none;">
+      <label style="display:block; margin-top:8px;">รูปแบบ</label>
+      <select id="styleSelect">
+        <option value="">-- เลือกรูปแบบ --</option>
+      </select>
+    </div>
+
+    <label style="display:block; margin-top:8px;">สี</label>
+    <select id="colorSelect">
+      <option value="">-- เลือกสี --</option>
+      <option value="สีทอง">สีทอง</option>
+      <option value="สีเงิน">สีเงิน</option>
+    </select>
+
+    <label style="display:block; margin-top:12px;">Tags เพิ่มเติม (ไม่บังคับ — คั่นด้วยเว้นวรรคหรือคอมม่า)</label>
+    <input type="text" id="tagsInput" placeholder="เช่น ของขวัญ, รุ่นลิมิเต็ด" />
 
     <div class="btn-row">
       <button id="addBtn" class="btn-green">➕ เพิ่มเข้าฐานข้อมูล</button>
+      <button type="button" id="clearPendingBtn" class="btn-clear">🗑️ ล้าง</button>
     </div>
     <div id="status" class="status-text">กำลังเตรียมระบบ...</div>
     <div id="photoCount"></div>
@@ -45,9 +76,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 
+  <script src="src/categories.js?v=1"></script>
   <script src="src/masterLoader.js?v=2"></script>
-  <script src="src/db.js?v=4"></script>
-  <script src="src/vision.js?v=2"></script>
-  <script src="src/app-input.js?v=2"></script>
+  <script src="src/db.js?v=5"></script>
+  <script src="src/vision.js?v=4"></script>
+  <script src="src/app-input.js?v=4"></script>
 </body>
 </html>
