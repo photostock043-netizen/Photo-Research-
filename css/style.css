@@ -133,3 +133,24 @@ button {
 
 hr.divider { border: none; border-top: 1px solid #eee; margin: 16px 0; }
 .section-title { font-size: 14px; font-weight: 700; margin: 4px 0 8px; }
+/* Modal ดูรูปภาพเพิ่มเติม */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-content {
+    max-width: 500px;
+    width: 90%;
+    margin: 0;
+    max-height: 85vh;
+    overflow: hidden;
+}
