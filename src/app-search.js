@@ -1,147 +1,141 @@
-import { extractFeatures, extractBarcode } from './vision.js';
-import { searchByFeatures, searchByBarcode, getAllProducts } from './search.js';
+import { searchByImage } from './search.js';
+import { getAllProducts } from './db.js';
 
 const cameraSearchInput = document.getElementById('cameraSearchInput');
 const gallerySearchInput = document.getElementById('gallerySearchInput');
-const searchPreview = document.getElementById('searchPreview');
-const queryImage = document.getElementById('queryImage');
-const loadingStatus = document.getElementById('loadingStatus');
-const resultsSection = document.getElementById('resultsSection');
+const previewBox = document.getElementById('previewBox');
+const previewImg = document.getElementById('searchPreviewImg');
+const statusMessage = document.getElementById('statusMessage');
+const resultsContainer = document.getElementById('resultsContainer');
 
-// Modal Elements
-const galleryModal = document.getElementById('galleryModal');
+const imageModal = document.getElementById('imageModal');
 const closeModalBtn = document.getElementById('closeModalBtn');
-const modalProductName = document.getElementById('modalProductName');
+const modalTitle = document.getElementById('modalTitle');
 const modalTags = document.getElementById('modalTags');
-const modalImagesContainer = document.getElementById('modalImagesContainer');
+const modalImages = document.getElementById('modalImages');
 
-let loadedProductsCache = [];
-
-async function handleSearch(file) {
+// รับไฟล์ภาพไม่ว่าจะมาจากกล้องหรือคลัง
+async function onFileSelected(file) {
   if (!file) return;
 
   const reader = new FileReader();
   reader.onload = async (e) => {
-    queryImage.src = e.target.result;
-    searchPreview.style.display = 'block';
-    loadingStatus.style.display = 'block';
-    resultsSection.innerHTML = '';
+    previewImg.src = e.target.result;
+    previewBox.style.display = 'block';
+    statusMessage.textContent = 'กำลังค้นหา...';
+    resultsContainer.innerHTML = '';
 
-    await new Promise(r => queryImage.onload = r);
+    await new Promise(res => previewImg.onload = res);
 
     try {
-      // 1. ตรวจสอบบาร์โค้ด
-      let barcode = null;
-      try {
-        barcode = await extractBarcode(queryImage);
-      } catch (err) {
-        console.log('No barcode found');
-      }
-
-      let results = [];
-      if (barcode) {
-        results = await searchByBarcode(barcode);
-      }
-
-      // 2. ถ้าไม่เจอบาร์โค้ด ให้ค้นหาด้วย Visual Features
-      if (!results || results.length === 0) {
-        const queryVector = await extractFeatures(queryImage);
-        results = await searchByFeatures(queryVector);
-      }
-
-      loadedProductsCache = results;
-      renderResults(results);
+      // เรียกฟังก์ชันค้นหาเดิมของโปรเจกต์
+      const results = await searchByImage(previewImg);
+      displayResults(results);
     } catch (err) {
       console.error(err);
-      resultsSection.innerHTML = `<p class="status-msg error">เกิดข้อผิดพลาดในการค้นหา: ${err.message}</p>`;
-    } finally {
-      loadingStatus.style.display = 'none';
+      statusMessage.textContent = 'เกิดข้อผิดพลาดในการค้นหา: ' + err.message;
     }
   };
   reader.readAsDataURL(file);
 }
 
-// 1. ค้นหาผ่านกล้อง
+// 1. ค้นหา: ถ่ายจากกล้อง
 cameraSearchInput.addEventListener('change', (e) => {
-  handleSearch(e.target.files[0]);
+  onFileSelected(e.target.files[0]);
   e.target.value = '';
 });
 
-// 2. ค้นหาผ่านคลังรูป
+// 2. ค้นหา: เลือกจากคลัง
 gallerySearchInput.addEventListener('change', (e) => {
-  handleSearch(e.target.files[0]);
+  onFileSelected(e.target.files[0]);
   e.target.value = '';
 });
 
-function renderResults(products) {
-  resultsSection.innerHTML = '';
-
-  if (!products || products.length === 0) {
-    resultsSection.innerHTML = '<p class="status-msg">ไม่พบสินค้าที่ตรงกัน</p>';
+function displayResults(results) {
+  if (!results || results.length === 0) {
+    statusMessage.textContent = 'ไม่พบสินค้าที่ใกล้เคียง';
     return;
   }
 
-  products.forEach((prod, index) => {
+  statusMessage.textContent = `พบสินค้า ${results.length} รายการ:`;
+
+  results.forEach(item => {
+    const p = item.product || item;
     const card = document.createElement('div');
-    card.className = 'result-card card';
+    card.style.border = '1px solid #ddd';
+    card.style.borderRadius = '6px';
+    card.style.padding = '10px';
+    card.style.marginBottom = '10px';
+    card.style.display = 'flex';
+    card.style.gap = '15px';
+    card.style.alignItems = 'center';
 
-    // รองรับทั้ง schema เก่า (image) และ schema ใหม่ (images[])
-    const imagesList = prod.images || (prod.image ? [prod.image] : []);
-    const coverImage = imagesList[0] || 'placeholder.png';
-    const tagList = prod.tags || [];
+    const allImages = p.images && p.images.length > 0 ? p.images : (p.image ? [p.image] : []);
+    const coverSrc = allImages[0] || '';
 
-    card.innerHTML = `
-      <img src="${coverImage}" alt="${prod.name}" class="result-thumb">
-      <div class="result-info">
-        <h3>${prod.name}</h3>
-        <p><strong>บาร์โค้ด:</strong> ${prod.barcode || '-'}</p>
-        ${prod.similarity !== undefined ? `<p><strong>ความคล้ายคลึง:</strong> ${(prod.similarity * 100).toFixed(1)}%</p>` : ''}
-        ${tagList.length > 0 ? `<div class="tag-chips">${tagList.map(t => `<span class="chip">${t}</span>`).join('')}</div>` : ''}
-        <button type="button" class="btn btn-secondary view-more-btn" data-index="${index}">
-          🖼️ ดูรูปภาพทั้งหมด (${imagesList.length})
-        </button>
-      </div>
+    const imgEl = document.createElement('img');
+    imgEl.src = coverSrc;
+    imgEl.style.width = '80px';
+    imgEl.style.height = '80px';
+    imgEl.style.objectFit = 'cover';
+    imgEl.style.borderRadius = '4px';
+
+    const info = document.createElement('div');
+    info.style.flex = '1';
+    
+    let tagsHtml = '';
+    if (p.tags && p.tags.length > 0) {
+      tagsHtml = `<div style="margin: 4px 0;">${p.tags.map(t => `<span style="background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-right: 4px;">#${t}</span>`).join('')}</div>`;
+    }
+
+    info.innerHTML = `
+      <h3 style="margin: 0 0 5px 0;">${p.name}</h3>
+      <p style="margin: 0 0 5px 0; color: #666;">บาร์โค้ด: ${p.barcode}</p>
+      ${tagsHtml}
     `;
 
-    card.querySelector('.view-more-btn').onclick = () => openModal(prod);
-    resultsSection.appendChild(card);
+    // ปุ่มกดเข้าไปดูรูปภาพอื่นๆ
+    const viewBtn = document.createElement('button');
+    viewBtn.type = 'button';
+    viewBtn.textContent = `ดูรูปภาพ (${allImages.length})`;
+    viewBtn.style.padding = '6px 10px';
+    viewBtn.style.cursor = 'pointer';
+    viewBtn.onclick = () => showImageModal(p, allImages);
+
+    info.appendChild(viewBtn);
+
+    card.appendChild(imgEl);
+    card.appendChild(info);
+    resultsContainer.appendChild(card);
   });
 }
 
-// ฟังก์ชันเปิด Modal ดูรูปทั้งหมด
-function openModal(prod) {
-  const imagesList = prod.images || (prod.image ? [prod.image] : []);
-  modalProductName.textContent = prod.name || 'รูปภาพสินค้า';
-  
-  // Render Tags ใน Modal
-  modalTags.innerHTML = '';
-  if (prod.tags && prod.tags.length > 0) {
-    prod.tags.forEach(tag => {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.textContent = tag;
-      modalTags.appendChild(chip);
-    });
-  }
+// แสดง Pop-up ดูรูปภาพทั้งหมดของสินค้า
+function showImageModal(product, images) {
+  modalTitle.textContent = product.name;
+  modalTags.textContent = product.tags && product.tags.length > 0 ? 'Tags: ' + product.tags.join(', ') : '';
+  modalImages.innerHTML = '';
 
-  // Render รูปภาพทั้งหมด
-  modalImagesContainer.innerHTML = '';
-  imagesList.forEach((src) => {
+  images.forEach(src => {
     const img = document.createElement('img');
     img.src = src;
-    img.className = 'modal-img-item';
-    modalImagesContainer.appendChild(img);
+    img.style.width = '100px';
+    img.style.height = '100px';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '4px';
+    img.style.border = '1px solid #ccc';
+    modalImages.appendChild(img);
   });
 
-  galleryModal.style.display = 'flex';
+  imageModal.style.display = 'flex';
 }
 
 closeModalBtn.onclick = () => {
-  galleryModal.style.display = 'none';
+  imageModal.style.display = 'none';
 };
 
 window.onclick = (e) => {
-  if (e.target === galleryModal) {
-    galleryModal.style.display = 'none';
+  if (e.target === imageModal) {
+    imageModal.style.display = 'none';
   }
 };
