@@ -1,15 +1,15 @@
-import { addProduct } from './db.js';
-import { extractFeatures, extractBarcode } from './vision.js';
+import { saveProduct } from './db.js';
+import { extractFeatures } from './vision.js';
 
-let selectedImages = []; // เก็บ DataURL ของรูปภาพทั้งหมด
+let selectedImages = [];
 
 const cameraInput = document.getElementById('cameraInput');
 const galleryInput = document.getElementById('galleryInput');
-const previewContainer = document.getElementById('previewContainer');
+const previewContainer = document.getElementById('imagePreviewContainer');
 const productForm = document.getElementById('productForm');
-const saveBtn = document.getElementById('saveBtn');
 
-function processFiles(files) {
+// อ่านไฟล์แล้วนำไปต่อท้าย selectedImages
+function handleFiles(files) {
   Array.from(files).forEach(file => {
     if (!file.type.startsWith('image/')) return;
     const reader = new FileReader();
@@ -24,41 +24,50 @@ function processFiles(files) {
 function renderPreviews() {
   previewContainer.innerHTML = '';
   selectedImages.forEach((imgSrc, index) => {
-    const item = document.createElement('div');
-    item.className = 'preview-item';
+    const wrap = document.createElement('div');
+    wrap.style.position = 'relative';
+    wrap.style.display = 'inline-block';
 
     const img = document.createElement('img');
     img.src = imgSrc;
+    img.style.width = '80px';
+    img.style.height = '80px';
+    img.style.objectFit = 'cover';
+    img.style.borderRadius = '4px';
+    img.style.border = '1px solid #ccc';
 
     const delBtn = document.createElement('button');
     delBtn.type = 'button';
-    delBtn.className = 'btn-delete';
     delBtn.innerHTML = '&times;';
+    delBtn.style.position = 'absolute';
+    delBtn.style.top = '0';
+    delBtn.style.right = '0';
+    delBtn.style.background = 'red';
+    delBtn.style.color = 'white';
+    delBtn.style.border = 'none';
+    delBtn.style.borderRadius = '0 4px 0 4px';
+    delBtn.style.cursor = 'pointer';
     delBtn.onclick = () => {
       selectedImages.splice(index, 1);
       renderPreviews();
     };
 
-    item.appendChild(img);
-    item.appendChild(delBtn);
-    previewContainer.appendChild(item);
+    wrap.appendChild(img);
+    wrap.appendChild(delBtn);
+    previewContainer.appendChild(wrap);
   });
 }
 
-// 1. ถ่ายจากกล้อง (ถ่ายสะสมได้เรื่อยๆ)
+// 1. ถ่ายจากกล้อง (ถ่ายทีละรูปแล้วนำมาสะสมใน Array)
 cameraInput.addEventListener('change', (e) => {
-  if (e.target.files.length > 0) {
-    processFiles(e.target.files);
-    e.target.value = '';
-  }
+  handleFiles(e.target.files);
+  e.target.value = '';
 });
 
-// 2. เลือกจากคลัง (เลือกพร้อมกันได้หลายรูป)
+// 2. เลือกจากคลัง (เลือกพร้อมกันหลายๆ รูปได้)
 galleryInput.addEventListener('change', (e) => {
-  if (e.target.files.length > 0) {
-    processFiles(e.target.files);
-    e.target.value = '';
-  }
+  handleFiles(e.target.files);
+  e.target.value = '';
 });
 
 // บันทึกสินค้า
@@ -70,57 +79,45 @@ productForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'กำลังประมวลผลเวกเตอร์และบันทึก...';
+  const barcode = document.getElementById('barcodeInput').value.trim();
+  const name = document.getElementById('nameInput').value.trim();
+  const tagsRaw = document.getElementById('tagsInput').value.trim();
+
+  // จัดการ Tags (ถ้าไม่กรอกจะได้ [])
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+
+  const submitBtn = document.getElementById('submitBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'กำลังประมวลผล...';
 
   try {
-    const name = document.getElementById('nameInput').value.trim();
-    let barcode = document.getElementById('barcodeInput').value.trim();
-    const rawTags = document.getElementById('tagsInput').value.trim();
+    // โหลดรูปแรกเพื่อสร้าง Features Vector สำหรับค้นหา
+    const tempImg = new Image();
+    tempImg.src = selectedImages[0];
+    await new Promise(res => tempImg.onload = res);
 
-    // ประมวลผล Tags (แยกด้วย comma และตัดช่องว่าง)
-    const tags = rawTags
-      ? rawTags.split(',').map(t => t.trim()).filter(t => t.length > 0)
-      : [];
+    const features = await extractFeatures(tempImg);
 
-    // ดึง Features Vector จากรูปภาพแรก (เพื่อใช้ในการค้นหาความคล้ายคลึง)
-    const primaryImg = new Image();
-    primaryImg.src = selectedImages[0];
-    await new Promise(r => primaryImg.onload = r);
-
-    const featureVector = await extractFeatures(primaryImg);
-
-    // หากไม่ได้กรอกบาร์โค้ด ลองสแกนจากรูปภาพ
-    if (!barcode) {
-      try {
-        barcode = await extractBarcode(primaryImg) || '';
-      } catch (err) {
-        console.log('No barcode detected');
-      }
-    }
-
-    const newProduct = {
-      id: 'prod_' + Date.now(),
-      name,
+    const productData = {
       barcode,
-      tags,
-      images: selectedImages,
-      features: Array.from(featureVector),
-      createdAt: new Date().toISOString()
+      name,
+      image: selectedImages[0], // รูปหลัก (เพื่อไม่ให้พังกับระบบเดิม)
+      images: selectedImages,   // รูปภาพทั้งหมด
+      tags,                     // ป้ายกำกับ
+      features: Array.from(features)
     };
 
-    await addProduct(newProduct);
-    alert('บันทึกสินค้าสำเร็จเรียบร้อยแล้ว!');
-
-    // รีเซ็ตฟอร์ม
+    await saveProduct(productData);
+    alert('บันทึกสินค้าเรียบร้อยแล้ว');
+    
     productForm.reset();
     selectedImages = [];
     renderPreviews();
-  } catch (error) {
-    console.error(error);
-    alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+  } catch (err) {
+    console.error(err);
+    alert('เกิดข้อผิดพลาด: ' + err.message);
   } finally {
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'บันทึกสินค้า';
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'บันทึกสินค้า';
   }
 });
