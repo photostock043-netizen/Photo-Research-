@@ -12,7 +12,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>เพิ่มสินค้าใหม่</h1>
+      <h1>เพิ่มข้อมูลสินค้า</h1>
       <nav>
         <a href="index.html">หน้าแรก</a>
         <a href="search.html">ค้นหา</a>
@@ -20,44 +20,40 @@
     </header>
 
     <main>
-      <form id="productForm" class="card">
+      <form id="productForm">
         <div class="form-group">
-          <label for="barcodeInput">บาร์โค้ด (ถ้ามี):</label>
-          <input type="text" id="barcodeInput" placeholder="กรอกหรือสแกนบาร์โค้ด">
+          <label for="barcodeInput">บาร์โค้ด:</label>
+          <input type="text" id="barcodeInput" required placeholder="กรอกบาร์โค้ดสินค้า">
         </div>
 
         <div class="form-group">
-          <label for="nameInput">ชื่อสินค้า / คำอธิบาย <span class="required">*</span>:</label>
-          <input type="text" id="nameInput" required placeholder="ระบุชื่อสินค้า">
+          <label for="nameInput">ชื่อสินค้า:</label>
+          <input type="text" id="nameInput" required placeholder="กรอกชื่อสินค้า">
         </div>
 
-        <!-- ช่อง Tags (ไม่บังคับ) -->
+        <!-- ระบบคีย์ Tags (ไม่บังคับ) -->
         <div class="form-group">
-          <label for="tagsInput">Tags / ป้ายกำกับ (คั่นด้วยจุลภาค เช่น สีดำ, กล่อง, เสื้อผ้า):</label>
-          <input type="text" id="tagsInput" placeholder="ไม่บังคับกรอก">
+          <label for="tagsInput">Tags (ไม่บังคับ คั่นด้วยจุลภาค เช่น สีแดง, พลาสติก):</label>
+          <input type="text" id="tagsInput" placeholder="tag1, tag2, tag3">
         </div>
 
+        <!-- ระบบเพิ่มรูปภาพ: ถ่ายจากกล้องได้เรื่อยๆ / เลือกจากคลังหลายรูป -->
         <div class="form-group">
-          <label>รูปภาพสินค้า (อย่างน้อย 1 รูป):</label>
-          <div class="btn-group">
-            <!-- 1. ถ่ายจากกล้อง -->
-            <label class="btn btn-secondary">
+          <label>รูปภาพสินค้า (เลือกหรือถ่ายได้หลายรูป):</label>
+          <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <label style="padding: 8px 12px; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">
               📷 ถ่ายจากกล้อง
               <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">
             </label>
-
-            <!-- 2. เลือกจากคลัง (หลายรูป) -->
-            <label class="btn btn-secondary">
-              🖼️ เลือกจากคลังรูปภาพ
+            <label style="padding: 8px 12px; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
+              🖼️ เลือกจากคลัง (หลายรูป)
               <input type="file" id="galleryInput" accept="image/*" multiple style="display: none;">
             </label>
           </div>
-
-          <!-- แสดงรายการพรีวิวรูปภาพทั้งหมดที่เลือกไว้ -->
-          <div id="previewContainer" class="preview-grid"></div>
+          <div id="imagePreviewContainer" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
         </div>
 
-        <button type="submit" class="btn btn-primary" id="saveBtn">บันทึกสินค้า</button>
+        <button type="submit" id="submitBtn" style="padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">บันทึกสินค้า</button>
       </form>
     </main>
   </div>
