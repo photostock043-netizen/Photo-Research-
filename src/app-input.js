@@ -1,137 +1,126 @@
-// app-input.js
-// Wires the "Add data" page: camera capture -> embedding -> save to IndexedDB.
+import { addProduct } from './db.js';
+import { extractFeatures, extractBarcode } from './vision.js';
 
-const els = {
-  photoInput: document.getElementById("photoInput"),
-  preview: document.getElementById("preview"),
-  barcodeInput: document.getElementById("barcodeInput"),
-  addBtn: document.getElementById("addBtn"),
-  status: document.getElementById("status"),
-  photoCount: document.getElementById("photoCount"),
-  batchPhotoInput: document.getElementById("batchPhotoInput"),
-  batchThumbs: document.getElementById("batchThumbs"),
-  batchBarcodeInput: document.getElementById("batchBarcodeInput"),
-  batchAddBtn: document.getElementById("batchAddBtn"),
-  batchStatus: document.getElementById("batchStatus"),
-};
+let selectedImages = []; // เก็บ DataURL ของรูปภาพทั้งหมด
 
-let currentBlob = null;
-let currentImgEl = null;
-let batchFiles = [];
+const cameraInput = document.getElementById('cameraInput');
+const galleryInput = document.getElementById('galleryInput');
+const previewContainer = document.getElementById('previewContainer');
+const productForm = document.getElementById('productForm');
+const saveBtn = document.getElementById('saveBtn');
 
-function setStatus(msg) {
-  els.status.textContent = msg;
-}
-
-async function refreshPhotoCount() {
-  const n = await ProductDB.countImages();
-  els.photoCount.textContent = `รูปในเครื่องทั้งหมด: ${n}`;
-}
-
-els.photoInput.addEventListener("change", async () => {
-  const file = els.photoInput.files[0];
-  if (!file) return;
-
-  currentBlob = file;
-  els.preview.src = URL.createObjectURL(file);
-  els.preview.style.display = "block";
-  setStatus("โหลดรูปแล้ว พร้อมเพิ่มเข้าฐานข้อมูล");
-
-  currentImgEl = await Vision.loadImageFromBlob(file);
-});
-
-els.addBtn.addEventListener("click", async () => {
-  if (!currentBlob || !currentImgEl) {
-    setStatus("กรุณาถ่ายรูปก่อน");
-    return;
-  }
-  const barcode = els.barcodeInput.value.trim();
-  if (!barcode) {
-    setStatus("กรุณากรอก Barcode ก่อนเพิ่มข้อมูล");
-    return;
-  }
-
-  setStatus("กำลังค้นหาข้อมูลสินค้าจาก Barcode...");
-  const product = await MasterLoader.lookupByBarcode(barcode);
-  if (!product) {
-    setStatus(`ไม่พบสินค้าที่ Barcode: ${barcode}`);
-    return;
-  }
-
-  setStatus("กำลังประมวลผลรูปภาพ (AI Vision)...");
-  const vector = await Vision.embedImage(currentImgEl);
-  const colorHist = Vision.extractColorHistogram(currentImgEl);
-
-  await ProductDB.addImageRecord({
-    itemNo: product.itemNo,
-    barcode,
-    imageBlob: currentBlob,
-    vector,
-    colorHist,
+function processFiles(files) {
+  Array.from(files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      selectedImages.push(e.target.result);
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
   });
+}
 
-  setStatus(`เพิ่มรูปสำเร็จ: ${product.description} (${product.itemNo})`);
-  await refreshPhotoCount();
+function renderPreviews() {
+  previewContainer.innerHTML = '';
+  selectedImages.forEach((imgSrc, index) => {
+    const item = document.createElement('div');
+    item.className = 'preview-item';
+
+    const img = document.createElement('img');
+    img.src = imgSrc;
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn-delete';
+    delBtn.innerHTML = '&times;';
+    delBtn.onclick = () => {
+      selectedImages.splice(index, 1);
+      renderPreviews();
+    };
+
+    item.appendChild(img);
+    item.appendChild(delBtn);
+    previewContainer.appendChild(item);
+  });
+}
+
+// 1. ถ่ายจากกล้อง (ถ่ายสะสมได้เรื่อยๆ)
+cameraInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    processFiles(e.target.files);
+    e.target.value = '';
+  }
 });
 
-els.batchPhotoInput.addEventListener("change", () => {
-  batchFiles = Array.from(els.batchPhotoInput.files);
-  els.batchThumbs.innerHTML = "";
-  for (const file of batchFiles) {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    els.batchThumbs.appendChild(img);
+// 2. เลือกจากคลัง (เลือกพร้อมกันได้หลายรูป)
+galleryInput.addEventListener('change', (e) => {
+  if (e.target.files.length > 0) {
+    processFiles(e.target.files);
+    e.target.value = '';
   }
-  els.batchStatus.textContent = batchFiles.length
-    ? `เลือกไว้ ${batchFiles.length} รูป`
-    : "";
 });
 
-els.batchAddBtn.addEventListener("click", async () => {
-  if (batchFiles.length === 0) {
-    els.batchStatus.textContent = "กรุณาเลือกรูปอย่างน้อย 1 รูป";
-    return;
-  }
-  const barcode = els.batchBarcodeInput.value.trim();
-  if (!barcode) {
-    els.batchStatus.textContent = "กรุณากรอก Barcode ก่อนเพิ่มข้อมูล";
+// บันทึกสินค้า
+productForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (selectedImages.length === 0) {
+    alert('กรุณาถ่ายรูปหรือเลือกรูปภาพอย่างน้อย 1 รูป');
     return;
   }
 
-  els.batchStatus.textContent = "กำลังค้นหาข้อมูลสินค้าจาก Barcode...";
-  const product = await MasterLoader.lookupByBarcode(barcode);
-  if (!product) {
-    els.batchStatus.textContent = `ไม่พบสินค้าที่ Barcode: ${barcode}`;
-    return;
-  }
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'กำลังประมวลผลเวกเตอร์และบันทึก...';
 
-  let done = 0;
-  for (const file of batchFiles) {
-    done++;
-    els.batchStatus.textContent = `กำลังเพิ่มรูปที่ ${done}/${batchFiles.length}...`;
-    const imgEl = await Vision.loadImageFromBlob(file);
-    const vector = await Vision.embedImage(imgEl);
-    const colorHist = Vision.extractColorHistogram(imgEl);
-    await ProductDB.addImageRecord({
-      itemNo: product.itemNo,
+  try {
+    const name = document.getElementById('nameInput').value.trim();
+    let barcode = document.getElementById('barcodeInput').value.trim();
+    const rawTags = document.getElementById('tagsInput').value.trim();
+
+    // ประมวลผล Tags (แยกด้วย comma และตัดช่องว่าง)
+    const tags = rawTags
+      ? rawTags.split(',').map(t => t.trim()).filter(t => t.length > 0)
+      : [];
+
+    // ดึง Features Vector จากรูปภาพแรก (เพื่อใช้ในการค้นหาความคล้ายคลึง)
+    const primaryImg = new Image();
+    primaryImg.src = selectedImages[0];
+    await new Promise(r => primaryImg.onload = r);
+
+    const featureVector = await extractFeatures(primaryImg);
+
+    // หากไม่ได้กรอกบาร์โค้ด ลองสแกนจากรูปภาพ
+    if (!barcode) {
+      try {
+        barcode = await extractBarcode(primaryImg) || '';
+      } catch (err) {
+        console.log('No barcode detected');
+      }
+    }
+
+    const newProduct = {
+      id: 'prod_' + Date.now(),
+      name,
       barcode,
-      imageBlob: file,
-      vector,
-      colorHist,
-    });
+      tags,
+      images: selectedImages,
+      features: Array.from(featureVector),
+      createdAt: new Date().toISOString()
+    };
+
+    await addProduct(newProduct);
+    alert('บันทึกสินค้าสำเร็จเรียบร้อยแล้ว!');
+
+    // รีเซ็ตฟอร์ม
+    productForm.reset();
+    selectedImages = [];
+    renderPreviews();
+  } catch (error) {
+    console.error(error);
+    alert('เกิดข้อผิดพลาดในการบันทึก: ' + error.message);
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'บันทึกสินค้า';
   }
-
-  els.batchStatus.textContent = `เพิ่มสำเร็จ ${batchFiles.length} รูป: ${product.description} (${product.itemNo})`;
-  batchFiles = [];
-  els.batchThumbs.innerHTML = "";
-  els.batchPhotoInput.value = "";
-  await refreshPhotoCount();
 });
-
-(async function init() {
-  setStatus("กำลังโหลดข้อมูลสินค้า...");
-  await MasterLoader.loadMasterData();
-  await Vision.loadModel();
-  await refreshPhotoCount();
-  setStatus("พร้อมใช้งาน — ถ่ายรูปสินค้าเพื่อเริ่มต้น");
-})();
