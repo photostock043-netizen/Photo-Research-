@@ -17,9 +17,9 @@
   <div class="subtitle">ค้นหาด้วยรูปภาพ หรือด้วย Barcode / Tag</div>
 
   <div class="card">
-    <div class="section-title">📷 ค้นหาด้วยรูปภาพ</div>
-    <input type="file" id="photoInput" accept="image/*" capture="environment" />
-    <img id="preview" alt="preview" />
+    <div class="section-title">📷 ค้นหาด้วยรูปภาพ (เลือกได้หลายรูป)</div>
+    <input type="file" id="photoInput" accept="image/*" multiple />
+    <div id="photoThumbs" class="batch-thumbs"></div>
     <div class="btn-row">
       <button id="searchBtn" class="btn-blue">🔍 ค้นหาสินค้าจากรูป</button>
     </div>
@@ -50,9 +50,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 
   <script src="src/masterLoader.js?v=2"></script>
-  <script src="src/db.js?v=2"></script>
-  <script src="src/vision.js?v=2"></script>
-  <script src="src/search.js?v=3"></script>
-  <script src="src/app-search.js?v=1"></script>
+  <script src="src/db.js?v=3"></script>
+  <script src="src/vision.js?v=3"></script>
+  <script src="src/search.js?v=5"></script>
+  <script src="src/app-search.js?v=3"></script>
 </body>
 </html>
