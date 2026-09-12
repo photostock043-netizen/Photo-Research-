@@ -1,58 +1,64 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ค้นหาสินค้า</title>
-<link rel="stylesheet" href="css/style.css?v=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ค้นหาสินค้า - Photo Research</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
-  <div class="nav">
-    <a href="index.html">🏠 หน้าแรก</a>
-    <a href="input.html">➕ เพิ่มข้อมูล</a>
-    <a href="search.html" class="active">🔍 ค้นหา</a>
+  <div class="container">
+    <header>
+      <h1>ค้นหาสินค้า</h1>
+      <nav>
+        <a href="index.html">หน้าแรก</a>
+        <a href="input.html">เพิ่มสินค้า</a>
+      </nav>
+    </header>
+
+    <main>
+      <div class="card">
+        <label>เลือกรูปแบบการค้นหาด้วยภาพ:</label>
+        <div class="btn-group">
+          <!-- 1. ถ่ายจากกล้องเพื่อค้นหา -->
+          <label class="btn btn-primary">
+            📷 ถ่ายจากกล้อง
+            <input type="file" id="cameraSearchInput" accept="image/*" capture="environment" style="display: none;">
+          </label>
+
+          <!-- 2. เลือกจากคลังรูปภาพเพื่อค้นหา -->
+          <label class="btn btn-secondary">
+            🖼️ เลือกจากคลังรูปภาพ
+            <input type="file" id="gallerySearchInput" accept="image/*" style="display: none;">
+          </label>
+        </div>
+
+        <div id="searchPreview" class="search-preview-box" style="display: none;">
+          <img id="queryImage" src="" alt="ภาพที่ใช้ค้นหา">
+        </div>
+      </div>
+
+      <div id="loadingStatus" class="status-msg" style="display: none;">กำลังค้นหาข้อมูล...</div>
+
+      <section id="resultsSection" class="results-grid"></section>
+    </main>
   </div>
 
-  <h1>ค้นหาสินค้า</h1>
-  <div class="subtitle">ค้นหาด้วยรูปภาพ หรือด้วย Barcode / Tag</div>
-
-  <div class="card">
-    <div class="section-title">📷 ค้นหาด้วยรูปภาพ (เลือกได้หลายรูป)</div>
-    <input type="file" id="photoInput" accept="image/*" multiple />
-    <div id="photoThumbs" class="batch-thumbs"></div>
-    <div class="btn-row">
-      <button id="searchBtn" class="btn-blue">🔍 ค้นหาสินค้าจากรูป</button>
+  <!-- Modal สำหรับกดเข้าไปดูรูปภาพอื่นๆ ของสินค้า -->
+  <div id="galleryModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalProductName">รูปภาพสินค้าทั้งหมด</h3>
+        <span class="close-btn" id="closeModalBtn">&times;</span>
+      </div>
+      <div id="modalTags" class="modal-tags"></div>
+      <div id="modalImagesContainer" class="modal-images-grid"></div>
     </div>
-    <div id="status" class="status-text">กำลังเตรียมระบบ...</div>
   </div>
 
-  <div id="photoResults"></div>
-
-  <hr class="divider" />
-
-  <div class="card">
-    <div class="section-title">🏷️ ค้นหาด้วย Barcode / Tag</div>
-    <input type="text" id="tagInput" placeholder="กรอก Barcode หรือ Item No / Tag" inputmode="text" />
-    <div class="btn-row">
-      <button id="tagSearchBtn" class="btn-purple">🔍 ค้นหา</button>
-    </div>
-    <div id="tagStatus" class="status-text"></div>
-  </div>
-
-  <div id="tagExactResult"></div>
-
-  <div id="similarWrap" style="display:none;">
-    <div class="section-title" style="margin-top:8px;">สินค้าใกล้เคียงอื่นๆ</div>
-    <div id="similarResults"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
-
-  <script src="src/masterLoader.js?v=2"></script>
-  <script src="src/db.js?v=3"></script>
-  <script src="src/vision.js?v=3"></script>
-  <script src="src/search.js?v=5"></script>
-  <script src="src/app-search.js?v=3"></script>
+  <script type="module" src="src/app-search.js"></script>
 </body>
 </html>
