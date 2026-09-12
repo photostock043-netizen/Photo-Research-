@@ -17,9 +17,17 @@
   <div class="subtitle">ค้นหาด้วยรูปภาพ หรือด้วย Barcode / Tag</div>
 
   <div class="card">
-    <div class="section-title">📷 ค้นหาด้วยรูปภาพ (เลือกได้หลายรูป)</div>
-    <input type="file" id="photoInput" accept="image/*" multiple />
-    <div id="photoThumbs" class="batch-thumbs"></div>
+    <div class="section-title">📷 ค้นหาด้วยรูปภาพ (ถ่ายซ้ำได้หลายครั้ง หรือเลือกจากคลังหลายรูป)</div>
+
+    <div class="capture-row">
+      <button type="button" id="cameraBtn" class="capture-btn btn-camera">📷 ถ่ายจากกล้อง</button>
+      <button type="button" id="galleryBtn" class="capture-btn btn-gallery">🖼️ เลือกจากคลัง</button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" />
+    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none;" />
+
+    <div id="photoThumbs" class="thumb-list"></div>
+
     <div class="btn-row">
       <button id="searchBtn" class="btn-blue">🔍 ค้นหาสินค้าจากรูป</button>
     </div>
@@ -31,8 +39,8 @@
   <hr class="divider" />
 
   <div class="card">
-    <div class="section-title">🏷️ ค้นหาด้วย Barcode / Tag</div>
-    <input type="text" id="tagInput" placeholder="กรอก Barcode หรือ Item No / Tag" inputmode="text" />
+    <div class="section-title">🏷️ ค้นหาด้วย Barcode / Item No / Tag</div>
+    <input type="text" id="tagInput" placeholder="กรอก Barcode, Item No หรือ Tag" inputmode="text" />
     <div class="btn-row">
       <button id="tagSearchBtn" class="btn-purple">🔍 ค้นหา</button>
     </div>
@@ -46,13 +54,24 @@
     <div id="similarResults"></div>
   </div>
 
+  <!-- "ดูรูปอื่นๆ" gallery modal, shared by every result card -->
+  <div id="photoModalOverlay" class="photo-modal-overlay">
+    <div class="photo-modal">
+      <div class="photo-modal-header">
+        <div class="photo-modal-title" id="photoModalTitle">รูปทั้งหมด</div>
+        <button type="button" class="photo-modal-close" id="photoModalClose">✕</button>
+      </div>
+      <div class="photo-modal-grid" id="photoModalGrid"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 
   <script src="src/masterLoader.js?v=2"></script>
-  <script src="src/db.js?v=3"></script>
+  <script src="src/db.js?v=4"></script>
   <script src="src/vision.js?v=3"></script>
   <script src="src/search.js?v=5"></script>
-  <script src="src/app-search.js?v=3"></script>
+  <script src="src/app-search.js?v=4"></script>
 </body>
 </html>
