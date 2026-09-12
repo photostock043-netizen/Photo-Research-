@@ -4,28 +4,40 @@
 // falling back to a tag match when nothing else is found). Every result
 // card can also open a gallery of every photo ever stored for that item.
 
-const els = {
-  cameraBtn: document.getElementById("cameraBtn"),
-  galleryBtn: document.getElementById("galleryBtn"),
-  cameraInput: document.getElementById("cameraInput"),
-  galleryInput: document.getElementById("galleryInput"),
-  photoThumbs: document.getElementById("photoThumbs"),
-  searchBtn: document.getElementById("searchBtn"),
-  status: document.getElementById("status"),
-  photoResults: document.getElementById("photoResults"),
+const els = {};
+try {
+  Object.assign(els, {
+    cameraBtn: document.getElementById("cameraBtn"),
+    galleryBtn: document.getElementById("galleryBtn"),
+    cameraInput: document.getElementById("cameraInput"),
+    galleryInput: document.getElementById("galleryInput"),
+    photoThumbs: document.getElementById("photoThumbs"),
+    searchBtn: document.getElementById("searchBtn"),
+    status: document.getElementById("status"),
+    photoResults: document.getElementById("photoResults"),
 
-  tagInput: document.getElementById("tagInput"),
-  tagSearchBtn: document.getElementById("tagSearchBtn"),
-  tagStatus: document.getElementById("tagStatus"),
-  tagExactResult: document.getElementById("tagExactResult"),
-  similarWrap: document.getElementById("similarWrap"),
-  similarResults: document.getElementById("similarResults"),
+    tagInput: document.getElementById("tagInput"),
+    tagSearchBtn: document.getElementById("tagSearchBtn"),
+    tagStatus: document.getElementById("tagStatus"),
+    tagExactResult: document.getElementById("tagExactResult"),
+    similarWrap: document.getElementById("similarWrap"),
+    similarResults: document.getElementById("similarResults"),
 
-  photoModalOverlay: document.getElementById("photoModalOverlay"),
-  photoModalTitle: document.getElementById("photoModalTitle"),
-  photoModalGrid: document.getElementById("photoModalGrid"),
-  photoModalClose: document.getElementById("photoModalClose"),
-};
+    photoModalOverlay: document.getElementById("photoModalOverlay"),
+    photoModalTitle: document.getElementById("photoModalTitle"),
+    photoModalGrid: document.getElementById("photoModalGrid"),
+    photoModalClose: document.getElementById("photoModalClose"),
+  });
+
+  for (const [key, el] of Object.entries(els)) {
+    if (!el) throw new Error(`ไม่พบ element id="${key}" ใน search.html — ไฟล์ HTML กับ JS อาจไม่ตรงเวอร์ชันกัน`);
+  }
+} catch (err) {
+  console.error(err);
+  const statusEl = document.getElementById("status");
+  if (statusEl) statusEl.textContent = "โหลดหน้าไม่สำเร็จ: " + err.message;
+  throw err;
+}
 
 // Accumulated search photos, from either the camera or the gallery picker.
 // Each entry: { file, objectUrl }
