@@ -1,57 +1,74 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ค้นหาด้วยรูปภาพ - Photo Research</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
-  <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo-Research - ค้นหาสินค้าด้วยรูปภาพ</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- TensorFlow.js and MobileNet -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+    <!-- ZXing for Barcode -->
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>ค้นหาด้วยรูปภาพ</h1>
-      <nav>
-        <a href="index.html">หน้าแรก</a>
-        <a href="input.html">เพิ่มสินค้า</a>
-      </nav>
-    </header>
+    <div class="container">
+        <header>
+            <h1>ค้นหาสินค้าด้วยรูปภาพ</h1>
+            <nav>
+                <a href="index.html" class="btn btn-secondary">กลับหน้าหลัก</a>
+                <a href="input.html" class="btn btn-primary">เพิ่มสินค้า</a>
+            </nav>
+        </header>
 
-    <main>
-      <!-- ปุ่มเลือกการค้นหา 2 แบบ -->
-      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <label style="padding: 10px 15px; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">
-          📷 ถ่ายจากกล้อง
-          <input type="file" id="cameraSearchInput" accept="image/*" capture="environment" style="display: none;">
-        </label>
-        <label style="padding: 10px 15px; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
-          🖼️ เลือกจากคลังรูปภาพ
-          <input type="file" id="gallerySearchInput" accept="image/*" style="display: none;">
-        </label>
-      </div>
+        <main>
+            <div class="card search-box">
+                <!-- ระบบเลือก 2 แบบ: 1 ถ่ายจากกล้อง 2 เลือกจากคลัง -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: center;">
+                    <label class="btn btn-primary" style="margin: 0; cursor: pointer;">
+                        📷 1. ถ่ายจากกล้อง
+                        <input type="file" id="camera-search-file" accept="image/*" capture="environment" style="display: none;">
+                    </label>
+                    <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
+                        🖼️ 2. เลือกจากคลัง
+                        <input type="file" id="gallery-search-file" accept="image/*" style="display: none;">
+                    </label>
+                </div>
 
-      <div id="previewBox" style="display: none; margin-bottom: 15px;">
-        <img id="searchPreviewImg" src="" style="max-width: 200px; max-height: 200px; border-radius: 4px;">
-      </div>
+                <!-- พรีวิวรูปภาพที่เลือก -->
+                <div id="preview-wrapper" style="display: none; text-align: center; margin-bottom: 15px;">
+                    <img id="image-preview" src="" alt="พรีวิวภาพค้นหา" style="max-height: 220px; border-radius: var(--radius, 6px); border: 1px solid #ddd;">
+                </div>
 
-      <div id="statusMessage" style="margin: 10px 0; font-weight: bold;"></div>
+                <!-- ปุ่มกดค้นหา (มีปุ่มนี้เพื่อให้ผู้ใช้กดยืนยันการค้นหาได้ชัดเจน) -->
+                <button type="button" id="start-search-btn" class="btn btn-primary" style="width: 100%; display: none;">
+                    🔍 เริ่มค้นหาสินค้า
+                </button>
+            </div>
 
-      <div id="resultsContainer"></div>
-    </main>
-  </div>
+            <!-- สถานะแจ้งกำลังค้นหา -->
+            <div id="status-card" class="card status-card" style="display: none;">
+                <div class="spinner"></div>
+                <p id="status-text">กำลังค้นหาข้อมูล...</p>
+            </div>
 
-  <!-- Modal ดูรูปภาพอื่นๆ ของสินค้า -->
-  <div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; justify-content: center; align-items: center;">
-    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative;">
-      <button id="closeModalBtn" style="position: absolute; top: 10px; right: 10px; font-size: 20px; border: none; background: none; cursor: pointer;">&times;</button>
-      <h3 id="modalTitle" style="margin-top: 0;">รูปภาพทั้งหมด</h3>
-      <div id="modalTags" style="margin-bottom: 10px; color: #666; font-size: 0.9em;"></div>
-      <div id="modalImages" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
+            <!-- รายการผลลัพธ์ -->
+            <div id="results-container" class="results-container"></div>
+        </main>
     </div>
-  </div>
 
-  <script type="module" src="src/app-search.js"></script>
+    <!-- Modal กดเข้าไปดูรูปภาพอื่นๆ ของสินค้า -->
+    <div id="image-modal" class="modal" style="display: none;">
+        <div class="modal-content card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+                <h3 id="modal-product-title" style="margin: 0;">รูปภาพทั้งหมด</h3>
+                <span id="close-modal-btn" style="font-size: 24px; cursor: pointer; line-height: 1;">&times;</span>
+            </div>
+            <div id="modal-tags" style="margin-bottom: 10px;"></div>
+            <div id="modal-images-grid" style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
+    <script type="module" src="src/app-search.js"></script>
 </body>
 </html>
