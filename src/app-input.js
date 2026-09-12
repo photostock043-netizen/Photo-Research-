@@ -2,19 +2,31 @@
 // Wires the "Add data" page: camera/gallery capture -> accumulate photos ->
 // embedding -> save to IndexedDB, all under one Barcode + optional Tags.
 
-const els = {
-  cameraBtn: document.getElementById("cameraBtn"),
-  galleryBtn: document.getElementById("galleryBtn"),
-  cameraInput: document.getElementById("cameraInput"),
-  galleryInput: document.getElementById("galleryInput"),
-  photoThumbs: document.getElementById("photoThumbs"),
-  photoThumbCount: document.getElementById("photoThumbCount"),
-  barcodeInput: document.getElementById("barcodeInput"),
-  tagsInput: document.getElementById("tagsInput"),
-  addBtn: document.getElementById("addBtn"),
-  status: document.getElementById("status"),
-  photoCount: document.getElementById("photoCount"),
-};
+const els = {};
+try {
+  Object.assign(els, {
+    cameraBtn: document.getElementById("cameraBtn"),
+    galleryBtn: document.getElementById("galleryBtn"),
+    cameraInput: document.getElementById("cameraInput"),
+    galleryInput: document.getElementById("galleryInput"),
+    photoThumbs: document.getElementById("photoThumbs"),
+    photoThumbCount: document.getElementById("photoThumbCount"),
+    barcodeInput: document.getElementById("barcodeInput"),
+    tagsInput: document.getElementById("tagsInput"),
+    addBtn: document.getElementById("addBtn"),
+    status: document.getElementById("status"),
+    photoCount: document.getElementById("photoCount"),
+  });
+
+  for (const [key, el] of Object.entries(els)) {
+    if (!el) throw new Error(`ไม่พบ element id="${key}" ใน input.html — ไฟล์ HTML กับ JS อาจไม่ตรงเวอร์ชันกัน`);
+  }
+} catch (err) {
+  console.error(err);
+  const statusEl = document.getElementById("status");
+  if (statusEl) statusEl.textContent = "โหลดหน้าไม่สำเร็จ: " + err.message;
+  throw err;
+}
 
 // Accumulated photos, from either the camera or the gallery picker.
 // Each entry: { file, objectUrl }
@@ -132,9 +144,14 @@ els.addBtn.addEventListener("click", async () => {
 });
 
 (async function init() {
-  setStatus("กำลังโหลดข้อมูลสินค้า...");
-  await MasterLoader.loadMasterData();
-  await Vision.loadModel();
-  await refreshPhotoCount();
-  setStatus("พร้อมใช้งาน — ถ่ายรูปสินค้าเพื่อเริ่มต้น");
+  try {
+    setStatus("กำลังโหลดข้อมูลสินค้า...");
+    await MasterLoader.loadMasterData();
+    await Vision.loadModel();
+    await refreshPhotoCount();
+    setStatus("พร้อมใช้งาน — ถ่ายรูปสินค้าเพื่อเริ่มต้น");
+  } catch (err) {
+    console.error(err);
+    setStatus("โหลดระบบไม่สำเร็จ: " + err.message + " (ลองรีเฟรชหน้าใหม่)");
+  }
 })();
