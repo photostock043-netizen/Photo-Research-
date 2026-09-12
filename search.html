@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ค้นหาสินค้า - Photo Research</title>
+  <title>ค้นหาด้วยรูปภาพ - Photo Research</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
@@ -12,7 +12,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>ค้นหาสินค้า</h1>
+      <h1>ค้นหาด้วยรูปภาพ</h1>
       <nav>
         <a href="index.html">หน้าแรก</a>
         <a href="input.html">เพิ่มสินค้า</a>
@@ -20,42 +20,35 @@
     </header>
 
     <main>
-      <div class="card">
-        <label>เลือกรูปแบบการค้นหาด้วยภาพ:</label>
-        <div class="btn-group">
-          <!-- 1. ถ่ายจากกล้องเพื่อค้นหา -->
-          <label class="btn btn-primary">
-            📷 ถ่ายจากกล้อง
-            <input type="file" id="cameraSearchInput" accept="image/*" capture="environment" style="display: none;">
-          </label>
-
-          <!-- 2. เลือกจากคลังรูปภาพเพื่อค้นหา -->
-          <label class="btn btn-secondary">
-            🖼️ เลือกจากคลังรูปภาพ
-            <input type="file" id="gallerySearchInput" accept="image/*" style="display: none;">
-          </label>
-        </div>
-
-        <div id="searchPreview" class="search-preview-box" style="display: none;">
-          <img id="queryImage" src="" alt="ภาพที่ใช้ค้นหา">
-        </div>
+      <!-- ปุ่มเลือกการค้นหา 2 แบบ -->
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <label style="padding: 10px 15px; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">
+          📷 ถ่ายจากกล้อง
+          <input type="file" id="cameraSearchInput" accept="image/*" capture="environment" style="display: none;">
+        </label>
+        <label style="padding: 10px 15px; background: #6c757d; color: white; border-radius: 4px; cursor: pointer;">
+          🖼️ เลือกจากคลังรูปภาพ
+          <input type="file" id="gallerySearchInput" accept="image/*" style="display: none;">
+        </label>
       </div>
 
-      <div id="loadingStatus" class="status-msg" style="display: none;">กำลังค้นหาข้อมูล...</div>
+      <div id="previewBox" style="display: none; margin-bottom: 15px;">
+        <img id="searchPreviewImg" src="" style="max-width: 200px; max-height: 200px; border-radius: 4px;">
+      </div>
 
-      <section id="resultsSection" class="results-grid"></section>
+      <div id="statusMessage" style="margin: 10px 0; font-weight: bold;"></div>
+
+      <div id="resultsContainer"></div>
     </main>
   </div>
 
-  <!-- Modal สำหรับกดเข้าไปดูรูปภาพอื่นๆ ของสินค้า -->
-  <div id="galleryModal" class="modal" style="display: none;">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 id="modalProductName">รูปภาพสินค้าทั้งหมด</h3>
-        <span class="close-btn" id="closeModalBtn">&times;</span>
-      </div>
-      <div id="modalTags" class="modal-tags"></div>
-      <div id="modalImagesContainer" class="modal-images-grid"></div>
+  <!-- Modal ดูรูปภาพอื่นๆ ของสินค้า -->
+  <div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 20px; border-radius: 8px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; position: relative;">
+      <button id="closeModalBtn" style="position: absolute; top: 10px; right: 10px; font-size: 20px; border: none; background: none; cursor: pointer;">&times;</button>
+      <h3 id="modalTitle" style="margin-top: 0;">รูปภาพทั้งหมด</h3>
+      <div id="modalTags" style="margin-bottom: 10px; color: #666; font-size: 0.9em;"></div>
+      <div id="modalImages" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>
     </div>
   </div>
 
