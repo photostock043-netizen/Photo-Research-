@@ -4,32 +4,51 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ค้นหาสินค้า</title>
-<link rel="stylesheet" href="css/style.css?v=1" />
+<link rel="stylesheet" href="css/style.css?v=3" />
 </head>
 <body>
   <div class="nav">
     <a href="index.html">🏠 หน้าแรก</a>
-    <a href="input.html">➕ เพิ่มข้อมูล</a>
+    <a href="input.html">➕ เพิ่ม</a>
     <a href="search.html" class="active">🔍 ค้นหา</a>
+    <a href="manage.html">🗑️ จัดการ</a>
   </div>
 
   <h1>ค้นหาสินค้า</h1>
   <div class="subtitle">ค้นหาด้วยรูปภาพ หรือด้วย Barcode / Tag</div>
 
   <div class="card">
-    <div class="section-title">📷 ค้นหาด้วยรูปภาพ (ถ่ายซ้ำได้หลายครั้ง หรือเลือกจากคลังหลายรูป)</div>
-
-    <div class="capture-row">
-      <button type="button" id="cameraBtn" class="capture-btn btn-camera">📷 ถ่ายจากกล้อง</button>
-      <button type="button" id="galleryBtn" class="capture-btn btn-gallery">🖼️ เลือกจากคลัง</button>
+    <div class="section-title">📷 ค้นหาด้วยรูปภาพ (ถ่ายหรือเลือกได้หลายรูป)</div>
+    <div class="btn-row">
+      <button type="button" id="pickCameraBtn" class="btn-blue">📷 ถ่ายจากกล้อง</button>
+      <button type="button" id="pickGalleryBtn" class="btn-purple">🖼️ เลือกจากคลัง</button>
     </div>
-    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" />
-    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none;" />
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none" />
+    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" />
+    <div id="photoThumbs" class="batch-thumbs"></div>
 
-    <div id="photoThumbs" class="thumb-list"></div>
+    <div class="section-title" style="margin-top:16px;">กรองด้วยหมวดหมู่ (ไม่บังคับ)</div>
+    <select id="filterTypeSelect">
+      <option value="">-- ทุกประเภท --</option>
+      <option value="สร้อย">สร้อย</option>
+      <option value="ต่างหู">ต่างหู</option>
+      <option value="กำไลข้อมือ">กำไลข้อมือ</option>
+      <option value="แหวน">แหวน</option>
+    </select>
+    <div id="filterStyleWrap" style="display:none;">
+      <select id="filterStyleSelect">
+        <option value="">-- ทุกรูปแบบ --</option>
+      </select>
+    </div>
+    <select id="filterColorSelect">
+      <option value="">-- ทุกสี --</option>
+      <option value="สีทอง">สีทอง</option>
+      <option value="สีเงิน">สีเงิน</option>
+    </select>
 
     <div class="btn-row">
       <button id="searchBtn" class="btn-blue">🔍 ค้นหาสินค้าจากรูป</button>
+      <button type="button" id="clearSearchBtn" class="btn-clear">🗑️ ล้าง</button>
     </div>
     <div id="status" class="status-text">กำลังเตรียมระบบ...</div>
   </div>
@@ -39,7 +58,7 @@
   <hr class="divider" />
 
   <div class="card">
-    <div class="section-title">🏷️ ค้นหาด้วย Barcode / Item No / Tag</div>
+    <div class="section-title">🏷️ ค้นหาด้วย Barcode / Tag</div>
     <input type="text" id="tagInput" placeholder="กรอก Barcode, Item No หรือ Tag" inputmode="text" />
     <div class="btn-row">
       <button id="tagSearchBtn" class="btn-purple">🔍 ค้นหา</button>
@@ -54,24 +73,14 @@
     <div id="similarResults"></div>
   </div>
 
-  <!-- "ดูรูปอื่นๆ" gallery modal, shared by every result card -->
-  <div id="photoModalOverlay" class="photo-modal-overlay">
-    <div class="photo-modal">
-      <div class="photo-modal-header">
-        <div class="photo-modal-title" id="photoModalTitle">รูปทั้งหมด</div>
-        <button type="button" class="photo-modal-close" id="photoModalClose">✕</button>
-      </div>
-      <div class="photo-modal-grid" id="photoModalGrid"></div>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 
+  <script src="src/categories.js?v=1"></script>
   <script src="src/masterLoader.js?v=2"></script>
-  <script src="src/db.js?v=4"></script>
-  <script src="src/vision.js?v=3"></script>
-  <script src="src/search.js?v=5"></script>
-  <script src="src/app-search.js?v=4"></script>
+  <script src="src/db.js?v=5"></script>
+  <script src="src/vision.js?v=4"></script>
+  <script src="src/search.js?v=7"></script>
+  <script src="src/app-search.js?v=6"></script>
 </body>
 </html>
