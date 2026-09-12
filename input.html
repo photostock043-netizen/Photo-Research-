@@ -17,12 +17,23 @@
   <div class="subtitle">ถ่ายรูป + กรอก Barcode เพื่อเพิ่มเข้าฐานข้อมูล</div>
 
   <div class="card">
-    <label>ถ่ายรูปสินค้า (รูปเดียว)</label><br/>
-    <input type="file" id="photoInput" accept="image/*" capture="environment" />
-    <img id="preview" alt="preview" />
+    <label>รูปสินค้า (ถ่ายซ้ำได้หลายครั้ง หรือเลือกจากคลังหลายรูป)</label>
+
+    <div class="capture-row">
+      <button type="button" id="cameraBtn" class="capture-btn btn-camera">📷 ถ่ายจากกล้อง</button>
+      <button type="button" id="galleryBtn" class="capture-btn btn-gallery">🖼️ เลือกจากคลัง</button>
+    </div>
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;" />
+    <input type="file" id="galleryInput" accept="image/*" multiple style="display:none;" />
+
+    <div id="photoThumbs" class="thumb-list"></div>
+    <div id="photoThumbCount" class="thumb-count"></div>
 
     <label style="display:block; margin-top:12px;">Barcode</label>
     <input type="text" id="barcodeInput" placeholder="กรอกหรือสแกน Barcode" inputmode="numeric" />
+
+    <label style="display:block; margin-top:12px;">Tags (ไม่บังคับ)</label>
+    <input type="text" id="tagsInput" placeholder="เช่น ทอง, สร้อยคอ, งานแต่ง (คั่นด้วยจุลภาค)" />
 
     <div class="btn-row">
       <button id="addBtn" class="btn-green">➕ เพิ่มเข้าฐานข้อมูล</button>
@@ -31,26 +42,12 @@
     <div id="photoCount"></div>
   </div>
 
-  <div class="card">
-    <label>เพิ่มรูปหลายรูปพร้อมกัน (Barcode เดียวกัน)</label><br/>
-    <input type="file" id="batchPhotoInput" accept="image/*" multiple />
-    <div id="batchThumbs" class="batch-thumbs"></div>
-
-    <label style="display:block; margin-top:12px;">Barcode สำหรับรูปชุดนี้</label>
-    <input type="text" id="batchBarcodeInput" placeholder="กรอกหรือสแกน Barcode" inputmode="numeric" />
-
-    <div class="btn-row">
-      <button id="batchAddBtn" class="btn-green">➕ เพิ่มรูปทั้งหมดเข้าฐานข้อมูล</button>
-    </div>
-    <div id="batchStatus" class="status-text"></div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
 
   <script src="src/masterLoader.js?v=2"></script>
-  <script src="src/db.js?v=2"></script>
+  <script src="src/db.js?v=4"></script>
   <script src="src/vision.js?v=2"></script>
-  <script src="src/app-input.js?v=1"></script>
+  <script src="src/app-input.js?v=2"></script>
 </body>
 </html>
