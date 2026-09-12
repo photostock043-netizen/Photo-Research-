@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photo-Research - ค้นหาสินค้าด้วยรูปภาพ</title>
+    <title>Photo-Research - ค้นหาสินค้า</title>
     <link rel="stylesheet" href="css/style.css">
     <!-- TensorFlow.js and MobileNet -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
@@ -14,36 +14,56 @@
 <body>
     <div class="container">
         <header>
-            <h1>ค้นหาสินค้าด้วยรูปภาพ</h1>
-            <nav>
-                <a href="index.html" class="btn btn-secondary">กลับหน้าหลัก</a>
-                <a href="input.html" class="btn btn-primary">เพิ่มสินค้า</a>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-btn">🏠 หน้าแรก</a>
+                <a href="input.html" class="nav-btn">➕ เพิ่มข้อมูล</a>
+                <a href="search.html" class="nav-btn active">🔍 ค้นหา</a>
             </nav>
+            <div class="page-title">
+                <h1>ค้นหาสินค้า</h1>
+                <p class="subtitle">ค้นหาด้วยรูปภาพ หรือด้วย Barcode / Tag</p>
+            </div>
         </header>
 
         <main>
-            <div class="card search-box">
-                <!-- ระบบเลือก 2 แบบ: 1 ถ่ายจากกล้อง 2 เลือกจากคลัง -->
-                <div style="display: flex; gap: 10px; margin-bottom: 15px; justify-content: center;">
-                    <label class="btn btn-primary" style="margin: 0; cursor: pointer;">
-                        📷 1. ถ่ายจากกล้อง
+            <!-- การ์ดค้นหาด้วยรูปภาพ -->
+            <div class="card search-card">
+                <label class="card-label">📷 ค้นหาด้วยรูปภาพ</label>
+                
+                <!-- 2 ปุ่ม: ถ่ายจากกล้อง / เลือกจากคลัง -->
+                <div style="display: flex; gap: 8px; margin: 10px 0;">
+                    <label class="btn btn-secondary" style="margin: 0; cursor: pointer; flex: 1; text-align: center;">
+                        📷 ถ่ายจากกล้อง
                         <input type="file" id="camera-search-file" accept="image/*" capture="environment" style="display: none;">
                     </label>
-                    <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
-                        🖼️ 2. เลือกจากคลัง
+                    <label class="btn btn-secondary" style="margin: 0; cursor: pointer; flex: 1; text-align: center;">
+                        🖼️ เลือกจากคลัง
                         <input type="file" id="gallery-search-file" accept="image/*" style="display: none;">
                     </label>
                 </div>
 
-                <!-- พรีวิวรูปภาพที่เลือก -->
-                <div id="preview-wrapper" style="display: none; text-align: center; margin-bottom: 15px;">
+                <div id="preview-wrapper" style="display: none; text-align: center; margin: 10px 0;">
                     <img id="image-preview" src="" alt="พรีวิวภาพค้นหา" style="max-height: 220px; border-radius: var(--radius, 6px); border: 1px solid #ddd;">
                 </div>
 
-                <!-- ปุ่มกดค้นหา (มีปุ่มนี้เพื่อให้ผู้ใช้กดยืนยันการค้นหาได้ชัดเจน) -->
-                <button type="button" id="start-search-btn" class="btn btn-primary" style="width: 100%; display: none;">
-                    🔍 เริ่มค้นหาสินค้า
+                <button type="button" id="btn-search-image" class="btn btn-primary" style="width: 100%;">
+                    🔍 ค้นหาสินค้าจากรูป
                 </button>
+                <p id="search-image-status" class="status-hint" style="margin-top: 8px; font-size: 0.85rem; color: #64748b;">
+                    พร้อมใช้งาน: ถ่ายรูปสินค้า หรือค้นหาด้วย Barcode/Tag
+                </p>
+            </div>
+
+            <!-- การ์ดค้นหาด้วย Barcode / Tag -->
+            <div class="card search-card">
+                <label class="card-label" for="barcode-tag-input">🏷️ ค้นหาด้วย Barcode / Tag</label>
+                <div class="form-group" style="margin: 10px 0;">
+                    <input type="text" id="barcode-tag-input" placeholder="กรอก Barcode หรือ Item No / Tag">
+                </div>
+                <button type="button" id="btn-search-text" class="btn" style="width: 100%; background: #8b5cf6; color: white;">
+                    🔍 ค้นหา
+                </button>
+                <p id="search-text-status" class="status-hint" style="margin-top: 8px; font-size: 0.85rem; color: #64748b;"></p>
             </div>
 
             <!-- สถานะแจ้งกำลังค้นหา -->
@@ -57,15 +77,15 @@
         </main>
     </div>
 
-    <!-- Modal กดเข้าไปดูรูปภาพอื่นๆ ของสินค้า -->
-    <div id="image-modal" class="modal" style="display: none;">
-        <div class="modal-content card">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
-                <h3 id="modal-product-title" style="margin: 0;">รูปภาพทั้งหมด</h3>
-                <span id="close-modal-btn" style="font-size: 24px; cursor: pointer; line-height: 1;">&times;</span>
+    <!-- Modal ดูรูปภาพอื่นๆ ของสินค้า -->
+    <div id="gallery-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 9999; justify-content: center; align-items: center; padding: 15px;">
+        <div class="card" style="max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px;">
+                <h3 id="modal-product-name" style="margin: 0; font-size: 1.1rem; color: #1e293b;">รูปภาพสินค้า</h3>
+                <button type="button" id="btn-close-modal" style="border: none; background: transparent; font-size: 24px; cursor: pointer; color: #64748b;">&times;</button>
             </div>
-            <div id="modal-tags" style="margin-bottom: 10px;"></div>
-            <div id="modal-images-grid" style="display: flex; flex-wrap: wrap; gap: 10px; max-height: 60vh; overflow-y: auto;"></div>
+            <div id="modal-product-tags" style="margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px;"></div>
+            <div id="modal-images-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;"></div>
         </div>
     </div>
 
