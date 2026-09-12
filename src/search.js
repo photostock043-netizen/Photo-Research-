@@ -21,6 +21,37 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
+/**
+ * Scales a vector to unit length (L2 norm = 1). Needed before averaging
+ * multiple vectors so that no single photo dominates just because its
+ * embedding happens to have larger raw magnitude.
+ */
+function normalizeVector(v) {
+  let normSq = 0;
+  for (let i = 0; i < v.length; i++) normSq += v[i] * v[i];
+  const norm = Math.sqrt(normSq);
+  if (norm === 0) return v.slice();
+  return v.map((x) => x / norm);
+}
+
+/**
+ * Combines several photos of the same product into a single query vector,
+ * using vector math: normalize each vector to unit length (so every photo
+ * counts equally), sum them, then average. This is the standard way to
+ * fuse multiple "shots" of the same subject into one more robust query —
+ * useful when a photo is searched from several angles/lighting at once.
+ */
+function averageVectors(vectors) {
+  if (vectors.length === 1) return vectors[0].slice();
+  const dim = vectors[0].length;
+  const sum = new Array(dim).fill(0);
+  for (const v of vectors) {
+    const n = normalizeVector(v);
+    for (let i = 0; i < dim; i++) sum[i] += n[i];
+  }
+  return sum.map((x) => x / vectors.length);
+}
+
 const COLOR_WEIGHT = 0.35; // how much color histogram influences the final score
 const VISUAL_WEIGHT = 1 - COLOR_WEIGHT;
 
@@ -69,4 +100,4 @@ function searchByVector(query, allRecords, topK = 5, excludeItemNo = null) {
     .slice(0, topK);
 }
 
-window.Search = { cosineSimilarity, combinedSimilarity, searchByVector };
+window.Search = { cosineSimilarity, normalizeVector, averageVectors, combinedSimilarity, searchByVector };
