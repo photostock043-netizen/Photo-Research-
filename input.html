@@ -14,48 +14,50 @@
 <body>
     <div class="container">
         <header>
-            <h1>เพิ่มข้อมูลสินค้าลงฐานข้อมูล</h1>
-            <nav>
-                <a href="index.html" class="btn btn-secondary">กลับหน้าหลัก</a>
-                <a href="search.html" class="btn btn-primary">ไปหน้าค้นหา</a>
+            <nav class="nav-bar">
+                <a href="index.html" class="nav-btn">🏠 หน้าแรก</a>
+                <a href="input.html" class="nav-btn active">➕ เพิ่มข้อมูล</a>
+                <a href="search.html" class="nav-btn">🔍 ค้นหา</a>
             </nav>
+            <div class="page-title">
+                <h1>เพิ่มข้อมูลสินค้า</h1>
+                <p class="subtitle">ระบบจะค้นหาชื่อสินค้าจากฐานข้อมูลให้อัตโนมัติด้วย Barcode</p>
+            </div>
         </header>
 
         <main>
             <div class="card">
                 <form id="add-product-form">
-                    <!-- 1. กรอกบาร์โค้ด (ระบบจะดึงชื่อสินค้าจากฐานข้อมูลอัตโนมัติ) -->
+                    <!-- 1. กรอก Barcode อย่างเดียว (ไม่ต้องกรอกชื่อสินค้า) -->
                     <div class="form-group">
-                        <label for="barcode">รหัสบาร์โค้ด (Barcode):</label>
-                        <input type="text" id="barcode" name="barcode" required placeholder="กรอกรหัสบาร์โค้ด 13 หลัก">
-                        <small id="product-lookup-name" style="display: block; margin-top: 5px; color: var(--primary-color, #2563eb); font-weight: 500;"></small>
+                        <label for="barcode">รหัส Barcode / Item No:</label>
+                        <input type="text" id="barcode" name="barcode" required placeholder="กรอกรหัสบาร์โค้ดสินค้า">
+                        <small id="product-lookup-name" style="display: block; margin-top: 4px; color: var(--primary-color, #2563eb); font-weight: 500;"></small>
                     </div>
 
-                    <!-- 2. ระบบคีย์ Tags (ไม่บังคับ) -->
+                    <!-- 2. คีย์ Tags (ไม่บังคับ) -->
                     <div class="form-group">
-                        <label for="tags">Tags / ป้ายกำกับ (ไม่บังคับ - คั่นด้วยจุลภาค เช่น ร้อน, โปรโมชั่น, สีแดง):</label>
-                        <input type="text" id="tags" name="tags" placeholder="tag1, tag2, tag3">
+                        <label for="tags">Tags / ป้ายกำกับ (ไม่บังคับ - คั่นด้วยจุลภาค):</label>
+                        <input type="text" id="tags" name="tags" placeholder="เช่น สร้อย, เงิน, แฟชั่น, 18k">
                     </div>
 
-                    <!-- 3. ระบบเพิ่มรูปภาพ: ถ่ายจากกล้องได้หลายๆ รูป / เลือกจากคลังได้หลายๆ รูป -->
+                    <!-- 3. เพิ่มรูปภาพ: ถ่ายจากกล้องได้หลายๆ รูป / เลือกจากคลังได้หลายๆ รูป -->
                     <div class="form-group">
                         <label>รูปภาพสินค้า (ถ่ายหรือเลือกได้หลายรูป):</label>
-                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                            <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
+                        <div style="display: flex; gap: 10px; margin: 8px 0;">
+                            <label class="btn btn-secondary" style="margin: 0; cursor: pointer; flex: 1; text-align: center;">
                                 📷 ถ่ายจากกล้อง
                                 <input type="file" id="camera-file" accept="image/*" capture="environment" style="display: none;">
                             </label>
-                            <label class="btn btn-secondary" style="margin: 0; cursor: pointer;">
-                                🖼️ เลือกจากคลัง (หลายรูป)
+                            <label class="btn btn-secondary" style="margin: 0; cursor: pointer; flex: 1; text-align: center;">
+                                🖼️ เลือกจากคลัง
                                 <input type="file" id="gallery-file" accept="image/*" multiple style="display: none;">
                             </label>
                         </div>
-
-                        <!-- พรีวิวรูปภาพทั้งหมดที่เลือกไว้ -->
-                        <div id="image-preview-list" class="gallery" style="margin-top: 10px;"></div>
+                        <div id="image-preview-list" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
                     </div>
 
-                    <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;">บันทึกข้อมูลสินค้า</button>
+                    <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">บันทึกข้อมูลสินค้า</button>
                 </form>
             </div>
 
